@@ -59,7 +59,6 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -85,12 +84,10 @@ import androidx.navigation.compose.rememberNavController
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
-import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.LatLngBounds
 import com.google.maps.android.clustering.Cluster
 import com.google.maps.android.compose.GoogleMap
-import com.google.maps.android.compose.Marker
-import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.MapsComposeExperimentalApi
 import com.google.maps.android.compose.clustering.Clustering
 import com.google.maps.android.compose.rememberCameraPositionState
 import kotlinx.coroutines.launch
@@ -121,7 +118,7 @@ class MainActivity : ComponentActivity() {
   fun MyScaffold() {
     val mapUiState by vm.uiState.collectAsState()
     val navController: NavHostController = rememberNavController()
-    var tabIndex = mapUiState.tabIndex
+    val tabIndex = mapUiState.tabIndex
     Scaffold(modifier = Modifier.fillMaxSize(),
       containerColor = MaterialTheme.colorScheme.surface,
       topBar = { AppBar(navController) },
@@ -175,10 +172,7 @@ class MainActivity : ComponentActivity() {
         composable(route = MapScreen.Map.name) {
           MapDestination(
             modifier = Modifier.padding(padding),
-            currentMapPosition = mapUiState.currentPosition,
-            zoom = mapUiState.zoom,
-            cameraPosition = mapUiState.cameraPosition,
-            parcels = mapUiState.parcels)
+            mapUiState = mapUiState)
         }
         composable(route = MapScreen.Parcel.name) {
           ParcelDestination(
@@ -204,8 +198,9 @@ class MainActivity : ComponentActivity() {
   @Composable
   fun AppBar(navHostController: NavHostController) {
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
-    val openExitDialog = remember { mutableStateOf(false) }
-    var expanded by remember { mutableStateOf(false) }
+    var showExitDialog by remember { mutableStateOf(false) }
+    var menuExpanded by remember { mutableStateOf(false) }
+    var showAboutDialog by remember { mutableStateOf(false) }
     CenterAlignedTopAppBar(
       colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
         containerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -223,7 +218,7 @@ class MainActivity : ComponentActivity() {
           if (navHostController.currentDestination?.route != MapScreen.Map.name) {
             navHostController.popBackStack()
             vm.setTabIndex(0)
-          } else openExitDialog.value = true
+          } else showExitDialog = true
         }) {
           Icon(
             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
@@ -233,10 +228,7 @@ class MainActivity : ComponentActivity() {
       },
       actions = {
         IconButton(onClick = {
-          expanded = !expanded
-          // if (navHostController.currentDestination?.route != MapScreen.Parcel.name)
-          //   navHostController.navigate(MapScreen.Parcel.name)
-          // else navHostController.popBackStack()
+          menuExpanded = !menuExpanded
         }) {
           Icon(
             imageVector = Icons.Filled.Menu,
@@ -244,8 +236,8 @@ class MainActivity : ComponentActivity() {
           )
         }
         DropdownMenu(
-          expanded = expanded,
-          onDismissRequest = { expanded = false }
+          expanded = menuExpanded,
+          onDismissRequest = { menuExpanded = false }
         ) {
           DropdownMenuItem(
             text = {
@@ -260,7 +252,7 @@ class MainActivity : ComponentActivity() {
                 Text("Scan Parcel", color = MaterialTheme.colorScheme.primary)
               }
             },
-            onClick = { /* Do something... */ }
+            onClick = { menuExpanded = !menuExpanded }
           )
           DropdownMenuItem(
             text = {
@@ -275,15 +267,67 @@ class MainActivity : ComponentActivity() {
                 Text("About App", color = MaterialTheme.colorScheme.primary)
               }
             },
-            onClick = { /* Do something... */ }
+            onClick = {
+              showAboutDialog = true
+              menuExpanded = !menuExpanded}
+          )
+        }
+        if (showAboutDialog) {
+          AlertDialog(
+            onDismissRequest = {
+              showAboutDialog = false // vm.confirmExit(false)
+            },
+            title = { Text("Parcela") },
+            text = {
+              Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.fillMaxWidth()) {
+                Text(fontSize = 18.sp, text = "Copyright 2025")
+                Text(fontSize = 18.sp, text = "Aryo Pinandito")
+              }
+            },
+            modifier = Modifier,
+            confirmButton = {
+              TextButton(
+                onClick = {
+                  showAboutDialog = false
+                }
+              ) {
+                Text("OK")
+              }
+            }
           )
         }
       },
       scrollBehavior = scrollBehavior,
     )
     when {
-      openExitDialog.value -> {
-        ExitDialog(isExiting = openExitDialog)
+      showExitDialog -> {
+        val activity: Activity = findActivity()
+        AlertDialog(
+          onDismissRequest = {
+            showExitDialog = false
+          },
+          title = { Text("Exit App") },
+          text = { Text("Do you want to exit?") },
+          dismissButton = {
+            TextButton(onClick = {
+              showExitDialog = false
+            }) {
+              Text("Cancel")
+            }
+          },
+          confirmButton = {
+            TextButton(
+              onClick = {
+                activity.finish()
+              }
+            ) {
+              Text("Exit")
+            }
+          }
+        )
       }
     }
   }
@@ -381,22 +425,21 @@ class MainActivity : ComponentActivity() {
 
   }
 
+  @OptIn(MapsComposeExperimentalApi::class)
   @Composable
   fun MapDestination(
     modifier: Modifier = Modifier,
-    currentMapPosition: LatLng,
-    zoom: Float,
-    cameraPosition: LatLng,
-    parcels: List<Parcel>
+    mapUiState: MapUiState
   ) {
 
     Column(modifier = modifier) {
-      val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(cameraPosition, zoom)
-      }
+
+      val cameraPositionState = rememberCameraPositionState()
       val coroutineScope = rememberCoroutineScope()
       val parcelItems = remember { mutableStateListOf<ParcelItem>() }
       val boundsBuilder = LatLngBounds.builder()
+      val parcels = mapUiState.parcels
+      val zoom = mapUiState.zoom
 
       if (parcels.isNotEmpty()) {
         parcelItems.clear()
@@ -404,32 +447,18 @@ class MainActivity : ComponentActivity() {
           boundsBuilder.include(parcel.position)
           parcelItems.add(ParcelItem(parcel.lat, parcel.lng, parcel.name, parcel.address))
         }
-      } else boundsBuilder.include(currentMapPosition)
+      }
+      cameraPositionState.position = CameraPosition.fromLatLngZoom(
+        boundsBuilder.build().center, zoom)
 
+      val center = boundsBuilder.build().center
 
-      LaunchedEffect(currentMapPosition) {
-        // Move the camera to the user's location with a zoom level of 10f
-        // cameraPositionState.move(CameraUpdateFactory
-        //   .newLatLngZoom(LatLng(currentMapPosition.latitude, currentMapPosition.longitude), 10f))
+      LaunchedEffect(center) {
         coroutineScope.launch {
           cameraPositionState.animate(
-            update = CameraUpdateFactory.newLatLngBounds(boundsBuilder.build(), 128),
+            update = CameraUpdateFactory.newLatLngBounds(boundsBuilder.build(), 32),
             durationMs = 1000
           )
-          println("Coroutine")
-          println(cameraPositionState.position.zoom)
-          vm.setCameraPosition(cameraPositionState.position.target)
-        }
-      }
-
-      LaunchedEffect(cameraPositionState.isMoving) {
-        val position = cameraPositionState.position
-        val isMoving = cameraPositionState.isMoving
-
-        if (!isMoving) {
-          val cameraLocation = LatLng(position.target.latitude, position.target.longitude)
-          vm.setCameraPosition(cameraLocation)
-          vm.setZoomLevel(cameraPositionState.position.zoom)
         }
       }
 
@@ -442,33 +471,21 @@ class MainActivity : ComponentActivity() {
         modifier = Modifier.fillMaxSize(),
         cameraPositionState = cameraPositionState
       ) {
-        // If the user's location is available, place a marker on the map
-        if (parcels.isEmpty())
-          currentMapPosition.let {
-            Marker(
-              state = MarkerState(position = it), // Place the marker at the user's location
-              title = "Your Location", // Set the title for the marker
-              snippet = "This is where you are currently located." // Set the snippet for the marker
-            )
-          }
-
         Clustering(items = parcelItems,
           onClusterClick = {
+            coroutineScope.launch {
+              cameraPositionState.animate(
+                update = CameraUpdateFactory.newLatLng(it.position),
+                durationMs = 300
+              )
+            }
             cameraPositionState.move(
               update = CameraUpdateFactory.zoomIn()
             )
-            false
+            true
           },
           clusterContent = { ClusterContent(cluster = it) },
           clusterItemContent = { ClusterItemContent(parcel = it) })
-
-        // parcels.forEach { parcel ->
-        //   Marker(
-        //     state = MarkerState(position = parcel.position),
-        //     title = parcel.name,
-        //     snippet = parcel.address
-        //   )
-        // }
       }
 
       // Handle permission requests for accessing fine location
@@ -487,7 +504,7 @@ class MainActivity : ComponentActivity() {
       // Request the location permission when the composable is launched
       LaunchedEffect(Unit) {
         cameraPositionState.animate(
-          update = CameraUpdateFactory.newLatLngZoom(currentMapPosition, zoom),
+          update = CameraUpdateFactory.newLatLngZoom(center, zoom),
           durationMs = 1000
         )
         println("LaunchedEffect")
@@ -546,11 +563,13 @@ class MainActivity : ComponentActivity() {
           }
         }
       } else {
-        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        Column(modifier = Modifier
+          .fillMaxWidth()
+          .padding(horizontal = 16.dp),
           horizontalAlignment = Alignment.Start,
           verticalArrangement = Arrangement.spacedBy(8.dp)) {
           val percent = (uiState.loadingProgress * 100).toInt().toString() + "%"
-          Text("Computing delivery route... ${percent}")
+          Text("Computing delivery route... $percent")
           LinearProgressIndicator(
             progress = { uiState.loadingProgress },
             modifier = Modifier.fillMaxWidth()
@@ -581,7 +600,7 @@ class MainActivity : ComponentActivity() {
   }
 
   @Composable
-  fun ParcelItem(parcel: Parcel, modifier: Modifier = Modifier) {
+  fun ParcelItem(parcel: Parcel) {
     Row(Modifier
       .fillMaxWidth()
       .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
@@ -617,9 +636,7 @@ class MainActivity : ComponentActivity() {
             color = MaterialTheme.colorScheme.primary)
         }
       }
-      FilledTonalIconButton(onClick = {
-
-      }) {
+      FilledTonalIconButton(onClick = {}) {
         Icon(
           Icons.Filled.ChevronRight,
           contentDescription = "Localized description"
@@ -643,7 +660,8 @@ class MainActivity : ComponentActivity() {
     Text(size,
       color = Color(0xFF196B52),
       fontSize = 18.sp,
-      modifier = Modifier.padding(24.dp)
+      modifier = Modifier
+        .padding(24.dp)
         .drawBehind {
           drawCircle(
             color = Color(0x77FFFFFF),// Color.hsl(155f, .92f, .75f),
@@ -662,38 +680,8 @@ class MainActivity : ComponentActivity() {
     Icon (
       Icons.Filled.LocationOn,
       tint = Color.hsl(155f, 1f, .3f),
-      contentDescription = "Localized description",
+      contentDescription = parcel.title,
       modifier = Modifier.size(32.dp)
-    )
-  }
-
-  @Composable
-  fun ExitDialog(modifier: Modifier = Modifier,
-                 isExiting: MutableState<Boolean> = mutableStateOf(true)) {
-    val activity: Activity = findActivity()
-    AlertDialog(
-      onDismissRequest = {
-        isExiting.value = false // vm.confirmExit(false)
-      },
-      title = { Text("Exit App") },
-      text = { Text("Do you want to exit?") },
-      modifier = modifier,
-      dismissButton = {
-        TextButton(onClick = {
-          isExiting.value = false // vm.confirmExit(false)
-        }) {
-          Text("Cancel")
-        }
-      },
-      confirmButton = {
-        TextButton(
-          onClick = {
-            activity.finish()
-          }
-        ) {
-          Text("Exit")
-        }
-      }
     )
   }
 
@@ -703,7 +691,7 @@ class MainActivity : ComponentActivity() {
       if (context is Activity) return context
       context = context.baseContext
     }
-    throw IllegalStateException("no activity")
+    throw IllegalStateException("No Activity found.")
   }
 
 }

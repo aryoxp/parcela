@@ -114,7 +114,7 @@ class MapViewModel() : ViewModel() {
               isLoadingRecommendation = false
             )
           }
-        }// Happy path
+        }
         else -> {}// Show error in UI
       }
     }
