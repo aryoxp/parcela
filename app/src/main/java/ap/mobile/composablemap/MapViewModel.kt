@@ -26,8 +26,6 @@ class MapViewModel() : ViewModel() {
   private val _uiState = MutableStateFlow(MapUiState())
   val uiState: StateFlow<MapUiState> = _uiState.asStateFlow()
 
-  // private var _zoom : MutableState<Float> = mutableStateOf(10.0f)
-
   init {
     _uiState.value = MapUiState()
     this.getParcels()

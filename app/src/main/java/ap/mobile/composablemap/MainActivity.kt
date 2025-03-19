@@ -71,6 +71,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -283,8 +284,10 @@ class MainActivity : ComponentActivity() {
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.fillMaxWidth()) {
-                Text(fontSize = 18.sp, text = "Copyright 2025")
-                Text(fontSize = 18.sp, text = "Aryo Pinandito")
+                Text(fontSize = 16.sp,
+                  text = "Copyright 2025 - Aryo Pinandito.\nAll Rights Reserved.",
+                  lineHeight = 24.sp)
+                // Text(fontSize = 16.sp, text = "Aryo Pinandito")
               }
             },
             modifier = Modifier,
@@ -660,6 +663,7 @@ class MainActivity : ComponentActivity() {
     Text(size,
       color = Color(0xFF196B52),
       fontSize = 18.sp,
+      fontWeight = FontWeight.Bold,
       modifier = Modifier
         .padding(24.dp)
         .drawBehind {

@@ -2,32 +2,35 @@ package ap.mobile.composablemap.abc
 
 import ap.mobile.composablemap.Parcel
 
-class Bee(food: Food, type: Type) {
+class Bee(type: Type, forageLimit: Int = 5) {
 
   enum class Type {
-    Employed,
-    Onlooker
+    EMPLOYED,
+    ONLOOKER,
+    SCOUT,
   }
 
-  private val food: Food = food
   var type: Type = type
     get() = field
 
-  fun optimizeFood() {
+  val forageLimit: Int = forageLimit
 
-  }
-
-  fun dance(): Food {
-    food.computeNectar()
+  fun takeAndOptimizeFood(food: Food) : Food {
+    for(i in 1..forageLimit)
+      food.optimize()
     return food
   }
 
-  fun turnOnlooker() {
-    type = Type.Onlooker
+  fun becomeEmployed() {
+    type = Type.EMPLOYED
   }
 
-  fun turnEmployed() {
-    type = Type.Employed
+  fun becomeScout() {
+    type = Type.SCOUT
+  }
+
+  fun scout(parcels: List<Parcel>): Food {
+    return Food(parcels.shuffled().toMutableList())
   }
 
 }

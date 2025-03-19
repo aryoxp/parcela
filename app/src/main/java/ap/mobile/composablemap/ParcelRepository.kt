@@ -65,10 +65,9 @@ class ParcelRepository {
   }
 
   suspend fun computeDelivery(progress: (Float) -> Unit) : Result<List<Parcel>> {
-    val delivery: List<Parcel> = parcels.shuffled()
     return withContext(Dispatchers.IO) {
-      var abc = Colony(delivery, progress = progress)
-      abc.compute()
+      var abc = Colony(parcels, progress = progress)
+      val delivery = abc.compute()
       Result.Success(delivery)
     }
   }

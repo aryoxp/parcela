@@ -4,8 +4,8 @@ import ap.mobile.composablemap.Parcel
 import kotlin.math.pow
 import kotlin.math.sqrt
 
-class Food(food: List<Parcel>) {
-  private val food: List<Parcel> = food
+class Food(parcels: MutableList<Parcel>) {
+  private val parcels: MutableList<Parcel> = parcels
   var nectar = 0.0
     get() = field
 
@@ -13,9 +13,15 @@ class Food(food: List<Parcel>) {
     computeNectar()
   }
 
+  fun optimize(): Food {
+    parcels.shuffle()
+    computeNectar()
+    return this
+  }
+
   fun computeNectar(): Double {
     var prevParcel: Parcel? = null
-    for (parcel in food) {
+    for (parcel in parcels) {
       if (prevParcel == null) {
         prevParcel = parcel
         continue
@@ -23,6 +29,10 @@ class Food(food: List<Parcel>) {
       nectar += distance(parcel, prevParcel)
     }
     return nectar
+  }
+
+  fun getParcels() : List<Parcel> {
+    return this.parcels
   }
 
   private fun distance(parcel1: Parcel, parcel2: Parcel): Double {
