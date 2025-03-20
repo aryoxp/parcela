@@ -2,7 +2,7 @@ package ap.mobile.composablemap.abc
 
 import ap.mobile.composablemap.Parcel
 
-class Bee(type: Type, forageLimit: Int = 5) {
+class Bee(var type: Type, val forageLimit: Int = 5) {
 
   enum class Type {
     EMPLOYED,
@@ -10,14 +10,23 @@ class Bee(type: Type, forageLimit: Int = 5) {
     SCOUT,
   }
 
-  var type: Type = type
-    get() = field
-
-  val forageLimit: Int = forageLimit
-
   fun takeAndOptimizeFood(food: Food) : Food {
-    for(i in 1..forageLimit)
+    print("Take and Optimizing...")
+    for(i in 1..forageLimit) {
       food.optimize()
+      print("${i}.")
+    }
+    println("")
+    return food
+  }
+
+  fun lookupFood(food: Food) : Food {
+    print("Take and Optimizing...")
+    for(i in 1..forageLimit) {
+      food.lookup()
+      print("${i}.")
+    }
+    println("")
     return food
   }
 

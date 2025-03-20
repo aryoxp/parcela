@@ -64,7 +64,7 @@ class ParcelRepository {
     return parcels.toList()
   }
 
-  suspend fun computeDelivery(progress: (Float) -> Unit) : Result<List<Parcel>> {
+  suspend fun computeDelivery(progress: (Float) -> Unit) : Result<Colony.Delivery> {
     return withContext(Dispatchers.IO) {
       var abc = Colony(parcels, progress = progress)
       val delivery = abc.compute()

@@ -29,6 +29,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.AddTask
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.Bolt
@@ -36,6 +37,9 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.MoveToInbox
+import androidx.compose.material.icons.filled.PinDrop
+import androidx.compose.material.icons.filled.Route
 import androidx.compose.material.icons.outlined.AllInbox
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.AlertDialog
@@ -86,9 +90,12 @@ import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLngBounds
+import com.google.android.gms.maps.model.StrokeStyle
+import com.google.android.gms.maps.model.StyleSpan
 import com.google.maps.android.clustering.Cluster
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapsComposeExperimentalApi
+import com.google.maps.android.compose.Polyline
 import com.google.maps.android.compose.clustering.Clustering
 import com.google.maps.android.compose.rememberCameraPositionState
 import kotlinx.coroutines.launch
@@ -184,14 +191,6 @@ class MainActivity : ComponentActivity() {
             modifier = Modifier.padding(padding), navController = navController)
         }
       }
-    }
-  }
-
-  @Preview
-  @Composable
-  fun MyScaffoldPreview() {
-    AppTheme(darkTheme = false, dynamicColor = false) {
-      MyScaffold()
     }
   }
 
@@ -434,7 +433,6 @@ class MainActivity : ComponentActivity() {
     modifier: Modifier = Modifier,
     mapUiState: MapUiState
   ) {
-
     Column(modifier = modifier) {
 
       val cameraPositionState = rememberCameraPositionState()
@@ -443,6 +441,7 @@ class MainActivity : ComponentActivity() {
       val boundsBuilder = LatLngBounds.builder()
       val parcels = mapUiState.parcels
       val zoom = mapUiState.zoom
+      val deliveryRoute = mapUiState.deliveryRoute
 
       if (parcels.isNotEmpty()) {
         parcelItems.clear()
@@ -489,6 +488,24 @@ class MainActivity : ComponentActivity() {
           },
           clusterContent = { ClusterContent(cluster = it) },
           clusterItemContent = { ClusterItemContent(parcel = it) })
+        if (deliveryRoute.size > 1) {
+          val polylineColorPairs = listOf(
+            0xFFFF0000.toInt() to 0xFF1C8ABD.toInt(),
+          )
+          Polyline(
+            points = deliveryRoute,
+            // color = Color.Red,
+            spans = polylineColorPairs.map {
+              StyleSpan(
+                StrokeStyle.gradientBuilder(
+                  it.first,
+                  it.second
+                ).build()
+              )
+            },
+            width = 10f
+          )
+        }
       }
 
       // Handle permission requests for accessing fine location
@@ -548,57 +565,108 @@ class MainActivity : ComponentActivity() {
     val uiState by vm.uiState.collectAsState()
     val parcels: List<Parcel>  = uiState.deliveries
     val isLoading: Boolean = uiState.isLoadingRecommendation
-    Column(modifier = modifier.fillMaxWidth()) {
-      Row(Modifier
-        .padding(16.dp)
-        .align(Alignment.CenterHorizontally)) {
-        Button(onClick = {
-          if (!isLoading)
-            vm.getDeliveryRecommendation()
-        }) {
-          Text(text = ("Stop".takeIf { isLoading } ?: "Delivery Recommendation"))
-        }
-      }
-      if (!isLoading) {
-        LazyColumn {
-          items(parcels) { parcel ->
-            ParcelItem(parcel)
-          }
-        }
-      } else {
-        Column(modifier = Modifier
-          .fillMaxWidth()
-          .padding(horizontal = 16.dp),
-          horizontalAlignment = Alignment.Start,
-          verticalArrangement = Arrangement.spacedBy(8.dp)) {
-          val percent = (uiState.loadingProgress * 100).toInt().toString() + "%"
-          Text("Computing delivery route... $percent")
-          LinearProgressIndicator(
-            progress = { uiState.loadingProgress },
-            modifier = Modifier.fillMaxWidth()
-          )
-        }
-      }
-    }
+    val loadingProgress = uiState.loadingProgress
+    val distance = uiState.deliveryDistance
+    val duration = uiState.deliveryDuration
+    DeliveryContent(modifier, isLoading, parcels, loadingProgress, distance, duration)
     BackHandler(enabled = true) {
       navController?.popBackStack()
       vm.setTabIndex(0)
     }
   }
 
-  @Preview
   @Composable
-  fun PreviewParcelDestination() {
-    AppTheme(darkTheme = false, dynamicColor = false) {
-      ParcelDestination(navController = null)
+  private fun DeliveryContent(
+    modifier: Modifier = Modifier,
+    isLoading: Boolean,
+    parcels: List<Parcel>,
+    loadingProgress: Float,
+    distance: Float = 0f,
+    duration: Float = 0f
+  ) {
+    Column(modifier = modifier.fillMaxWidth(),
+      horizontalAlignment = Alignment.CenterHorizontally) {
+      Row(
+        Modifier.padding(16.dp).fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center
+      ) {
+        Button(onClick = {
+          if (!isLoading)
+            vm.getDeliveryRecommendation()
+        }) {
+          Row(verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Icon(
+              imageVector = Icons.Default.Route,
+              contentDescription = "Localized description",
+              tint = MaterialTheme.colorScheme.inversePrimary
+            )
+            Text(text = ("Stop".takeIf { isLoading } ?: "Delivery Route"))
+          }
+        }
+      }
+      Row(modifier = Modifier.weight(1f)) {
+        if (!isLoading) {
+          LazyColumn {
+            items(parcels) { parcel ->
+              ParcelItem(parcel)
+            }
+          }
+        } else {
+          Column(
+            modifier = Modifier
+              .fillMaxWidth()
+              .padding(horizontal = 16.dp),
+            horizontalAlignment = Alignment.Start,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+          ) {
+            val percent = (loadingProgress * 100).toInt().toString() + "%"
+            Text("Computing delivery route... $percent")
+            LinearProgressIndicator(
+              progress = { loadingProgress },
+              modifier = Modifier.fillMaxWidth()
+            )
+          }
+        }
+      }
+      // HorizontalDivider(color = MaterialTheme.colorScheme.secondary,
+      //   modifier = Modifier.fillMaxWidth().width(1.dp).padding(horizontal = 16.dp))
+      Row(modifier = Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        Icon(
+          imageVector = Icons.Default.MoveToInbox,
+          tint = MaterialTheme.colorScheme.primary,
+          contentDescription = "Localized description"
+        )
+        Text("${parcels.size}", Modifier.padding(end = 16.dp))
+        Icon(
+          imageVector = Icons.Default.PinDrop,
+          tint = MaterialTheme.colorScheme.primary,
+          contentDescription = "Localized description"
+        )
+        Text("${"%.2f".format(distance)} km", Modifier.padding(end = 16.dp))
+        Icon(
+          imageVector = Icons.Default.AccessTime,
+          tint = MaterialTheme.colorScheme.primary,
+          contentDescription = "Localized description"
+        )
+        Text("${"%.2f".format(duration)} hrs")
+      }
     }
   }
 
-  @Preview
+  // @Preview
+  // @Composable
+  // fun PreviewParcelDestination() {
+  //   AppTheme(darkTheme = false, dynamicColor = false) {
+  //     ParcelDestination(navController = null)
+  //   }
+  // }
+
+  @Preview(heightDp = 480)
   @Composable
   fun PreviewDeliveryDestination() {
     AppTheme(darkTheme = false, dynamicColor = false) {
-      DeliveryDestination(navController = null)
+      DeliveryContent(isLoading = false, parcels = emptyList(), loadingProgress = 0.6f)
     }
   }
 
@@ -685,7 +753,7 @@ class MainActivity : ComponentActivity() {
       Icons.Filled.LocationOn,
       tint = Color.hsl(155f, 1f, .3f),
       contentDescription = parcel.title,
-      modifier = Modifier.size(32.dp)
+      modifier = Modifier.size(40.dp)
     )
   }
 

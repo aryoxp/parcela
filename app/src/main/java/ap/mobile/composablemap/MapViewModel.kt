@@ -3,10 +3,10 @@ package ap.mobile.composablemap
 import android.content.Context
 import android.content.pm.PackageManager
 import android.location.Location
-import androidx.compose.runtime.MutableState
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import ap.mobile.composablemap.abc.Colony
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.maps.model.LatLng
@@ -105,10 +105,17 @@ class MapViewModel() : ViewModel() {
     viewModelScope.launch {
       val result = parcelRepository.computeDelivery(::setProgress)
       when (result) {
-        is Result.Success<List<Parcel>> -> {
+        is Result.Success<Colony.Delivery> -> {
+          val deliveryRoute = mutableListOf<LatLng>()
+          result.data.parcels.forEach {
+            deliveryRoute.add(it.position)
+          }
           _uiState.update { currentState ->
             currentState.copy(
-              deliveries = result.data,
+              deliveries = result.data.parcels,
+              deliveryRoute = deliveryRoute,
+              deliveryDistance = result.data.distance,
+              deliveryDuration = result.data.duration,
               isLoadingRecommendation = false
             )
           }
