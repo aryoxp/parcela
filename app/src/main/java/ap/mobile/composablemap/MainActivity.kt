@@ -54,12 +54,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -427,12 +429,15 @@ class MainActivity : ComponentActivity() {
 
   }
 
-  @OptIn(MapsComposeExperimentalApi::class)
+  @OptIn(MapsComposeExperimentalApi::class, ExperimentalMaterial3Api::class)
   @Composable
   fun MapDestination(
     modifier: Modifier = Modifier,
     mapUiState: MapUiState
   ) {
+    val sheetState = rememberModalBottomSheetState()
+    val scope = rememberCoroutineScope()
+    var showBottomSheet by remember { mutableStateOf(true) }
     Column(modifier = modifier) {
 
       val cameraPositionState = rememberCameraPositionState()
@@ -538,6 +543,51 @@ class MainActivity : ComponentActivity() {
           else -> {
             // Request the location permission if it has not been granted
             permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+          }
+        }
+      }
+    }
+    if (showBottomSheet) {
+      ModalBottomSheet(
+        onDismissRequest = {
+          showBottomSheet = false
+        },
+        sheetState = sheetState,
+
+      ) {
+        Column(Modifier.padding(horizontal = 16.dp)) {
+          // Sheet content
+          Text("Parcel", fontSize = 24.sp)
+          Text("Djoko Sudemo",
+            fontSize = 18.sp,
+            color = MaterialTheme.colorScheme.primary)
+          Text("Jl. Jalan Kembar Boulevard 3B")
+          Row() {
+            Icon(
+              imageVector = Icons.Default.PinDrop,
+              tint = MaterialTheme.colorScheme.primary,
+              contentDescription = "Localized description"
+            )
+            Text("0.0, 0.0")
+          }
+          Row(modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center) {
+            Button(onClick = {
+              scope.launch { sheetState.hide() }.invokeOnCompletion {
+                if (!sheetState.isVisible) {
+                  showBottomSheet = false
+                }
+              }
+            }) {
+              Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(
+                  imageVector = Icons.Default.Route,
+                  contentDescription = "Localized description",
+                  tint = MaterialTheme.colorScheme.inversePrimary
+                )
+                Text("Get Route")
+              }
+            }
           }
         }
       }
