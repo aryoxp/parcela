@@ -38,8 +38,8 @@ class Bee(var type: Type, val forageLimit: Int = 5) {
     type = Type.SCOUT
   }
 
-  fun scout(parcels: List<Parcel>): Food {
-    return Food(parcels.shuffled().toMutableList())
+  fun scout(parcels: List<Parcel>, startAtParcel: Parcel? = null): Food {
+    return Food(parcels.shuffled().toMutableList(), startAtParcel)
   }
 
 }

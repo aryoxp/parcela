@@ -10,6 +10,7 @@ class Colony(
   val forageLimit: Int = 50,
   val cycleLimit: Int = 30,
   val progress: (progress: Float) -> Unit,
+  val startAtParcel: Parcel? = null,
 ) {
   private val bees = mutableListOf<Bee>()
   private val foods = mutableSetOf<Food>()
@@ -29,7 +30,7 @@ class Colony(
       val bee = Bee(Bee.Type.SCOUT, forageLimit = forageLimit)
       bees.add(bee)
       // initialize foods in dancing altar
-      foods.add(bee.scout(parcels))
+      foods.add(bee.scout(parcels, startAtParcel))
       bee.becomeEmployed()
     }
     repeat(numOnlooker) {
@@ -88,7 +89,7 @@ class Colony(
       foods.clear()
       for (bee in bees) {
         if (bee.type == Bee.Type.SCOUT) {
-          foods.add(bee.scout(parcels))
+          foods.add(bee.scout(parcels, startAtParcel))
           bee.becomeEmployed()
         }
       }

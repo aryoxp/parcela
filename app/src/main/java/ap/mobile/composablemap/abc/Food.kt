@@ -4,11 +4,15 @@ import ap.mobile.composablemap.Parcel
 import kotlin.math.pow
 import kotlin.math.sqrt
 
-class Food(private val parcels: MutableList<Parcel>) {
+class Food(private val parcels: MutableList<Parcel>, val startAtParcel: Parcel?) {
   var nectar = 0.0
 
   init {
     computeNectar(parcels)
+    if (startAtParcel != null) {
+      parcels.remove(startAtParcel)
+      parcels.add(index = 0, startAtParcel)
+    }
   }
 
   fun optimizeShuffle(): Food {
@@ -50,7 +54,7 @@ class Food(private val parcels: MutableList<Parcel>) {
   fun lookup(): Food {
     // print("Before: ")
     val before = computeNectar(parcels)
-    val index = (1..(parcels.size-1)).shuffled().first()
+    val index = ((1.takeIf { startAtParcel != null } ?: 2)..(parcels.size-1)).shuffled().first()
     val chainA = parcels.slice(0..(index-1)).toMutableList()
     val chainB = parcels.slice(index..(parcels.size-1)).toMutableList()
     val newParcels: MutableList<Parcel> = mutableListOf()

@@ -23,12 +23,21 @@ import timber.log.Timber
 class MapViewModel() : ViewModel() {
 
   private val parcelRepository: ParcelRepository = ParcelRepository()
-  private val _uiState = MutableStateFlow(MapUiState())
-  val uiState: StateFlow<MapUiState> = _uiState.asStateFlow()
+
+  private val _navUiState = MutableStateFlow(NavUiState())
+  val navUiState: StateFlow<NavUiState> = _navUiState.asStateFlow()
+
+  private val _mapUiState = MutableStateFlow(MapUiState())
+  val mapUiState: StateFlow<MapUiState> = _mapUiState.asStateFlow()
+
+  private val _deliveryUiState = MutableStateFlow(DeliveryUiState())
+  val deliveryUiState: StateFlow<DeliveryUiState> = _deliveryUiState.asStateFlow()
+
+  private val _parcelState = MutableStateFlow(ParcelState())
+  val parcelState: StateFlow<ParcelState> = _parcelState.asStateFlow()
 
   init {
-    _uiState.value = MapUiState()
-    this.getParcels()
+    getParcels()
   }
 
   fun moveToSingapore() {
@@ -36,7 +45,7 @@ class MapViewModel() : ViewModel() {
   }
 
   fun moveToLocation(location: LatLng) {
-    _uiState.update { currentState ->
+    _mapUiState.update { currentState ->
       currentState.copy(currentPosition = location) }
   }
 
@@ -74,50 +83,69 @@ class MapViewModel() : ViewModel() {
 
   fun setCameraPosition(cameraPosition: LatLng) {
     println("Camera position: ${cameraPosition.latitude}, ${cameraPosition.longitude}")
-    _uiState.update { currentState ->
+    _mapUiState.update { currentState ->
       currentState.copy(cameraPosition = cameraPosition) }
   }
 
   fun setZoomLevel(zoom: Float) {
-    println("Zoom: ${zoom}")
-    _uiState.update { currentState ->
+    println("Zoom: $zoom")
+    _mapUiState.update { currentState ->
       currentState.copy(zoom = zoom) }
   }
 
   fun getParcels() {
-    _uiState.update { currentState ->
-      currentState.copy(isLoading = true) }
-    viewModelScope.launch() {
+    viewModelScope.launch {
       val parcels = ParcelRepository().getAllParcels()
-      _uiState.update { currentState ->
-        currentState.copy(parcels = parcels, isLoading = false) }
+      _parcelState.update { currentState ->
+        currentState.copy(parcels = parcels)
+      }
+      _deliveryUiState.update { currentState ->
+        currentState.copy(deliveryRoute = parcels)
+      }
+      _mapUiState.update { currentState ->
+        currentState.copy(parcels = parcels)
+      }
     }
   }
 
   fun setTabIndex(index: Int) {
-    _uiState.update { currentState ->
+    _navUiState.update { currentState ->
       currentState.copy(tabIndex = index) }
   }
 
-  fun getDeliveryRecommendation() {
-    _uiState.update { currentState ->
-      currentState.copy(isLoadingRecommendation = true) }
+  fun getDeliveryRecommendation(parcel: Parcel? = null) {
+    _deliveryUiState.update { currentState ->
+      currentState.copy(isComputing = true) }
+    _parcelState.update { currentState ->
+      currentState.copy(isComputing = true)
+    }
     viewModelScope.launch {
-      val result = parcelRepository.computeDelivery(::setProgress)
+      val result = parcelRepository.computeDelivery(::setProgress, parcel)
       when (result) {
         is Result.Success<Colony.Delivery> -> {
+
+          _deliveryUiState.update { currentState ->
+            currentState.copy(
+              deliveryRoute = result.data.parcels,
+              deliveryDistance = result.data.distance,
+              deliveryDuration = result.data.duration,
+              isComputing = false
+            )
+          }
+          _parcelState.update { currentState ->
+            currentState.copy(
+              isComputing = false,
+              deliveries = result.data.parcels,
+              deliveryDistance = result.data.distance,
+              deliveryDuration = result.data.duration,
+            )
+          }
           val deliveryRoute = mutableListOf<LatLng>()
           result.data.parcels.forEach {
             deliveryRoute.add(it.position)
           }
-          _uiState.update { currentState ->
-            currentState.copy(
-              deliveries = result.data.parcels,
-              deliveryRoute = deliveryRoute,
-              deliveryDistance = result.data.distance,
-              deliveryDuration = result.data.duration,
-              isLoadingRecommendation = false
-            )
+          _mapUiState.update {currentState ->
+            currentState.copy(deliveryRoute = deliveryRoute)
           }
         }
         else -> {}// Show error in UI
@@ -126,10 +154,33 @@ class MapViewModel() : ViewModel() {
   }
 
   fun setProgress(progress: Float): Float {
-    _uiState.update { currentState ->
-      currentState.copy(loadingProgress = progress)
+    _deliveryUiState.update { currentState ->
+      currentState.copy(computingProgress = progress)
     }
     return progress
+  }
+
+  fun setParcel(parcel: Parcel) {
+    _mapUiState.update { currentState ->
+      val parcels = currentState.parcels.toMutableList<Parcel>()
+      for(p in parcels) {
+        p.selected = parcel.id == p.id
+      }
+      currentState.copy(parcels = parcels,
+        recompose = !currentState.recompose)
+    }
+    _parcelState.update { currentState ->
+      currentState.copy(
+        parcel = parcel
+      )
+    }
+  }
+  fun parcelSheet(shouldShow: Boolean = true) {
+    _parcelState.update { currentState ->
+      currentState.copy(
+        showParcelSheet = shouldShow
+      )
+    }
   }
 
 }

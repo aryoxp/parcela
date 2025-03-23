@@ -8,13 +8,14 @@ data class Parcel (
   val lat: Double = 0.0,
   val lng: Double = 0.0,
   val trackingNumber: String = "",
-  val name: String = "",
+  val recipientName: String = "",
   val address: String = "",
   val type: String = "",
   val description: String = "",
   val position: LatLng = LatLng(lat, lng),
   var markerIconHue: Float? = null,
-  val isDelivered: Boolean = false
+  val isDelivered: Boolean = false,
+  var selected: Boolean = false
 ) {
   init {
     markerIconHue =

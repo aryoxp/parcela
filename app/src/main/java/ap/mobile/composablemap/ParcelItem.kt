@@ -4,15 +4,21 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.clustering.ClusterItem
 
 class ParcelItem (
-  lat: Double,
-  lng: Double,
-  title: String,
-  snippet: String
+  private val lat: Double,
+  private val lng: Double,
+  private val title: String,
+  private val snippet: String,
+  private var parcel: Parcel,
 ) : ClusterItem {
 
-  private val position: LatLng
-  private val title: String
-  private val snippet: String
+  private val position: LatLng = LatLng(lat, lng)
+
+  val isSelected: Boolean
+    get() = parcel.selected
+
+  init {
+    this.parcel = parcel
+  }
 
   override fun getPosition(): LatLng {
     return position
@@ -30,9 +36,12 @@ class ParcelItem (
     return 1f
   }
 
-  init {
-    position = LatLng(lat, lng)
-    this.title = title
-    this.snippet = snippet
+  fun getParcel() : Parcel {
+    return parcel
   }
+
+  // fun select(selected: Boolean = true) {
+  //   parcel.selected = selected
+  // }
+
 }
