@@ -24,9 +24,6 @@ class MapViewModel() : ViewModel() {
 
   private val parcelRepository: ParcelRepository = ParcelRepository()
 
-  private val _navUiState = MutableStateFlow(NavUiState())
-  val navUiState: StateFlow<NavUiState> = _navUiState.asStateFlow()
-
   private val _mapUiState = MutableStateFlow(MapUiState())
   val mapUiState: StateFlow<MapUiState> = _mapUiState.asStateFlow()
 
@@ -106,11 +103,6 @@ class MapViewModel() : ViewModel() {
         currentState.copy(parcels = parcels)
       }
     }
-  }
-
-  fun setTabIndex(index: Int) {
-    _navUiState.update { currentState ->
-      currentState.copy(tabIndex = index) }
   }
 
   fun getDeliveryRecommendation(parcel: Parcel? = null) {

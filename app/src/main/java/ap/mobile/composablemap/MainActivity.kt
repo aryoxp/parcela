@@ -19,7 +19,6 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateIntOffsetAsState
-import androidx.compose.animation.core.animateOffsetAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -87,7 +86,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -107,6 +106,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -121,11 +121,11 @@ import com.google.maps.android.clustering.Cluster
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapEffect
 import com.google.maps.android.compose.MapsComposeExperimentalApi
-import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.Polyline
 import com.google.maps.android.compose.clustering.Clustering
 import com.google.maps.android.compose.rememberCameraPositionState
 import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
 import timber.log.Timber
 import kotlin.math.ceil
 
@@ -133,6 +133,10 @@ import kotlin.math.ceil
 class MainActivity : ComponentActivity() {
 
   private val vm: MapViewModel by viewModels()
+
+  @Serializable object MapDeliveryScreen
+  @Serializable object ParcelScreen
+  @Serializable object DeliveryScreen
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
@@ -144,26 +148,54 @@ class MainActivity : ComponentActivity() {
     }
   }
 
-  enum class MapScreen() {
-    Map,
-    Parcel,
-    Delivery
-  }
-
   @OptIn(ExperimentalMaterial3Api::class)
   @Composable
   fun MyScaffold() {
-    val navUiState by vm.navUiState.collectAsState()
     val navController: NavHostController = rememberNavController()
-    val tabIndex = navUiState.tabIndex
+    var tabIndex by remember { mutableIntStateOf(0) }
+    var showExitDialog by remember { mutableStateOf(false) }
     Scaffold(modifier = Modifier.fillMaxSize(),
       containerColor = MaterialTheme.colorScheme.surface,
-      topBar = { AppBar(navController) },
-      bottomBar = { BottomNavigationBar(navController, tabIndex) }
+      topBar = { AppBar(
+        onNavigateBack = {
+          if (navController.currentDestination?.hasRoute<MapDeliveryScreen>() == true) {
+            showExitDialog = true
+          } else {
+            navController.popBackStack()
+            tabIndex = 0
+          }
+        }
+      ) },
+      bottomBar = { BottomNavigationBar(tabIndex, onNavigate = { index ->
+        when (index) {
+          0 -> {
+            if (navController.currentDestination?.hasRoute<MapDeliveryScreen>() != true) {
+              navController.popBackStack()
+              tabIndex = 0
+            }
+          }
+          1 -> {
+            if (navController.currentDestination?.hasRoute<ParcelScreen>() != true) {
+              navController.navigate(ParcelScreen) {
+                popUpTo(MapDeliveryScreen)
+              }
+              tabIndex = 1
+            }
+          }
+          2 -> {
+            if (navController.currentDestination?.hasRoute<DeliveryScreen>() != true) {
+              navController.navigate(DeliveryScreen) {
+                popUpTo(MapDeliveryScreen)
+              }
+              tabIndex = 2
+            }
+          }
+        }
+      }) }
     ) { padding ->
       NavHost(
         navController = navController,
-        startDestination = MapScreen.Map.name,
+        startDestination = MapDeliveryScreen,
         enterTransition = {
           fadeIn(
             animationSpec = tween(
@@ -206,20 +238,49 @@ class MainActivity : ComponentActivity() {
         },
 
       ) {
-        composable(route = MapScreen.Map.name) {
+        composable<MapDeliveryScreen> { // (route = MapScreen.Map.name) {
           MapDestination(modifier = Modifier.padding(padding))
         }
-        composable(route = MapScreen.Parcel.name) {
+        composable<ParcelScreen> { // (route = MapScreen.Parcel.name) {
           ParcelDestination(
-            modifier = Modifier.padding(padding), navController = navController)
+            modifier = Modifier.padding(padding), onBackHandler = {
+              navController.popBackStack()
+              tabIndex = 0
+            })
         }
-        composable(route = MapScreen.Delivery.name) {
+        composable<DeliveryScreen> { // (route = MapScreen.Delivery.name) {
           DeliveryDestination(
-            modifier = Modifier.padding(padding), navController = navController)
+            modifier = Modifier.padding(padding), onBackHandler = {
+              navController.popBackStack()
+              tabIndex = 0
+            })
         }
       }
     }
     BottomSheet()
+    if (showExitDialog) {
+      AlertDialog(
+        onDismissRequest = {
+          showExitDialog = false
+        },
+        title = { Text("Exit App") },
+        text = { Text("Do you want to exit?") },
+        dismissButton = {
+          TextButton(onClick = {
+            showExitDialog = false
+          }) {
+            Text("Cancel")
+          }
+        },
+        confirmButton = {
+          TextButton(
+            onClick = { findActivity().finish() }
+          ) {
+            Text("Exit")
+          }
+        }
+      )
+    }
   }
 
   @Composable
@@ -338,9 +399,8 @@ class MainActivity : ComponentActivity() {
 
   @OptIn(ExperimentalMaterial3Api::class)
   @Composable
-  fun AppBar(navHostController: NavHostController) {
+  fun AppBar(onNavigateBack: () -> Unit) {
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
-    var showExitDialog by remember { mutableStateOf(false) }
     var menuExpanded by remember { mutableStateOf(false) }
     var showAboutDialog by remember { mutableStateOf(false) }
     CenterAlignedTopAppBar(
@@ -356,12 +416,7 @@ class MainActivity : ComponentActivity() {
         )
       },
       navigationIcon = {
-        IconButton(onClick = {
-          if (navHostController.currentDestination?.route != MapScreen.Map.name) {
-            navHostController.popBackStack()
-            vm.setTabIndex(0)
-          } else showExitDialog = true
-        }) {
+        IconButton(onClick = onNavigateBack) {
           Icon(
             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
             contentDescription = "Localized description"
@@ -446,51 +501,14 @@ class MainActivity : ComponentActivity() {
       },
       scrollBehavior = scrollBehavior,
     )
-    when {
-      showExitDialog -> {
-        val activity: Activity = findActivity()
-        AlertDialog(
-          onDismissRequest = {
-            showExitDialog = false
-          },
-          title = { Text("Exit App") },
-          text = { Text("Do you want to exit?") },
-          dismissButton = {
-            TextButton(onClick = {
-              showExitDialog = false
-            }) {
-              Text("Cancel")
-            }
-          },
-          confirmButton = {
-            TextButton(
-              onClick = {
-                activity.finish()
-              }
-            ) {
-              Text("Exit")
-            }
-          }
-        )
-      }
-    }
   }
 
   @Composable
-  fun BottomNavigationBar(navController: NavHostController, tabIndex: Int) {
-
+  fun BottomNavigationBar(tabIndex: Int, onNavigate: (Int) -> Unit) {
     BottomAppBar(
       actions = {
         TabRow(selectedTabIndex = tabIndex) {
-          Tab(onClick = {
-            if (navController.currentDestination?.route != MapScreen.Map.name) {
-              // navController.navigate(MapScreen.Map.name) {
-              //   popUpTo(MapScreen.Map.name)
-              // }
-              navController.popBackStack()
-              vm.setTabIndex(0)
-            }
-          },
+          Tab(onClick = { onNavigate(0) },
             selected = (tabIndex == 0),
             text = { Text(text = "Map",
               textAlign = TextAlign.Center,
@@ -501,13 +519,7 @@ class MainActivity : ComponentActivity() {
               contentDescription = "Localized description"
             )}
           )
-          Tab(onClick = {
-            if (navController.currentDestination?.route != MapScreen.Parcel.name) {
-              navController.navigate(MapScreen.Parcel.name) {
-                popUpTo(MapScreen.Map.name)
-              }
-              vm.setTabIndex(1)
-            }},
+          Tab(onClick = { onNavigate(1) },
             selected = (tabIndex == 1),
             text = { Text(text = "Parcel", textAlign = TextAlign.Center) },
             icon = { Icon(
@@ -516,13 +528,7 @@ class MainActivity : ComponentActivity() {
               contentDescription = "Localized description"
             )}
           )
-          Tab(onClick = {
-            if (navController.currentDestination?.route != MapScreen.Delivery.name) {
-              navController.navigate(MapScreen.Delivery.name) {
-                popUpTo(MapScreen.Map.name)
-              }
-              vm.setTabIndex(2)
-            }},
+          Tab(onClick = { onNavigate(2) },
             selected = (tabIndex == 2),
             text = { Text(text = "Delivery", textAlign = TextAlign.Center) },
             icon = { Icon(
@@ -532,41 +538,8 @@ class MainActivity : ComponentActivity() {
             )}
           )
         }
-        // IconButton(onClick = { /* do something */ }) {
-        //   Icon(
-        //     Icons.Filled.Edit,
-        //     tint = MaterialTheme.colorScheme.primary,
-        //     contentDescription = "Localized description",
-        //   )
-        // }
-        // IconButton(onClick = { /* do something */ }) {
-        //   Icon(
-        //     Icons.Filled.Image,
-        //     tint = MaterialTheme.colorScheme.primary,
-        //     contentDescription = "Localized description",
-        //   )
-        // }
-        // IconButton(onClick = { /* do something */ }) {
-        //   Icon(Icons.Filled.Mic,
-        //     tint = MaterialTheme.colorScheme.primary,
-        //     contentDescription = "Localized description",
-        //   )
-        // }
-      },
-      // floatingActionButton = {
-      //   FloatingActionButton(
-      //     onClick = { /* do something */ },
-      //     containerColor = BottomAppBarDefaults.bottomAppBarFabColor,
-      //     elevation = FloatingActionButtonDefaults.bottomAppBarFabElevation()
-      //   ) {
-      //     Icon(Icons.Filled.Add,
-      //       tint = MaterialTheme.colorScheme.primary,
-      //       contentDescription = "Localized description")
-      //   }
-      // }
+      }
     )
-
-
   }
 
   @OptIn(MapsComposeExperimentalApi::class, ExperimentalMaterial3Api::class)
@@ -781,7 +754,8 @@ class MainActivity : ComponentActivity() {
   }
 
   @Composable
-  fun ParcelDestination(modifier: Modifier = Modifier, navController: NavHostController?) {
+  fun ParcelDestination(modifier: Modifier = Modifier,
+                        onBackHandler: () -> Unit) {
     val uiState by vm.mapUiState.collectAsState()
     val parcels: List<Parcel>  = uiState.parcels
     LazyColumn(modifier = modifier) {
@@ -790,14 +764,13 @@ class MainActivity : ComponentActivity() {
       }
     }
     BackHandler(enabled = true) {
-      navController?.popBackStack()
-      vm.setTabIndex(0)
+      onBackHandler()
     }
   }
 
   @Composable
   fun DeliveryDestination(modifier: Modifier = Modifier,
-                          navController: NavHostController?) {
+                          onBackHandler: () -> Unit) {
     val uiState by vm.deliveryUiState.collectAsState()
     val parcels: List<Parcel>  = uiState.deliveryRoute
     val isComputing: Boolean = uiState.isComputing
@@ -806,8 +779,7 @@ class MainActivity : ComponentActivity() {
     val duration = uiState.deliveryDuration
     DeliveryContent(modifier, isComputing, parcels, progress, distance, duration)
     BackHandler(enabled = true) {
-      navController?.popBackStack()
-      vm.setTabIndex(0)
+      onBackHandler()
     }
   }
 

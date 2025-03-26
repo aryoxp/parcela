@@ -2,6 +2,8 @@ plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.kotlin.android)
   alias(libs.plugins.kotlin.compose)
+
+  kotlin("plugin.serialization") version "2.1.0"
 }
 
 android {
@@ -66,8 +68,8 @@ dependencies {
   implementation("androidx.compose.material3:material3:1.3.1")
   implementation("androidx.compose.material:material-icons-extended:1.7.8")
   implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
-  implementation("com.google.maps.android:maps-compose:6.4.1")
-  implementation("com.google.maps.android:maps-compose-utils:6.4.1")
+  implementation("com.google.maps.android:maps-compose:6.5.2")
+  implementation("com.google.maps.android:maps-compose-utils:6.5.2")
   implementation("androidx.navigation:navigation-compose:2.8.9")
   implementation("com.google.android.gms:play-services-maps:19.1.0")
   implementation("com.google.android.gms:play-services-location:21.3.0")
@@ -79,6 +81,8 @@ dependencies {
 
   implementation("androidx.navigation:navigation-ui:2.8.9")
   implementation("androidx.navigation:navigation-compose:2.8.9")
+
+  implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
 
   testImplementation(libs.junit)
   androidTestImplementation(libs.androidx.junit)
