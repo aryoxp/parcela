@@ -4,6 +4,8 @@ plugins {
   alias(libs.plugins.kotlin.compose)
 
   kotlin("plugin.serialization") version "2.1.0"
+  id("kotlin-kapt")
+  id("com.google.dagger.hilt.android")
 }
 
 android {
@@ -66,6 +68,7 @@ dependencies {
   // implementation(libs.maps.compose)
   // implementation(libs.navigation.compose)
   implementation("androidx.compose.material3:material3:1.3.1")
+  implementation("androidx.compose.material3:material3:1.4.0-alpha11")
   implementation("androidx.compose.material:material-icons-extended:1.7.8")
   implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
   implementation("com.google.maps.android:maps-compose:6.5.2")
@@ -76,13 +79,18 @@ dependencies {
   implementation("com.jakewharton.timber:timber:5.0.1")
   implementation("androidx.compose.runtime:runtime:1.7.8")
   implementation("androidx.compose.runtime:runtime-livedata:1.7.8")
-  implementation(libs.androidx.ui.text.google.fonts)
-  implementation(libs.androidx.work.runtime.ktx)
+  implementation("androidx.compose.ui:ui-text-google-fonts:1.7.8")
+  implementation("androidx.work:work-runtime-ktx:2.10.0")
 
   implementation("androidx.navigation:navigation-ui:2.8.9")
   implementation("androidx.navigation:navigation-compose:2.8.9")
 
   implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
+
+  implementation("androidx.datastore:datastore-preferences:1.1.4")
+
+  implementation("com.google.dagger:hilt-android:2.51.1")
+  kapt("com.google.dagger:hilt-android-compiler:2.51.1")
 
   testImplementation(libs.junit)
   androidTestImplementation(libs.androidx.junit)
@@ -91,4 +99,9 @@ dependencies {
   androidTestImplementation(libs.androidx.ui.test.junit4)
   debugImplementation(libs.androidx.ui.tooling)
   debugImplementation(libs.androidx.ui.test.manifest)
+}
+
+// Allow references to generated code
+kapt {
+  correctErrorTypes = true
 }
