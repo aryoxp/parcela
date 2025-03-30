@@ -58,7 +58,7 @@ class ParcelRepository {
 
   }
 
-  suspend fun getAllParcels(): List<Parcel> {
+  fun getAllParcels(): List<Parcel> {
     return parcels.toList()
   }
 

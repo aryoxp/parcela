@@ -152,15 +152,15 @@ class MapViewModel() : ViewModel() {
     return progress
   }
 
-  fun setParcel(parcel: Parcel) {
-    _mapUiState.update { currentState ->
-      val parcels = currentState.parcels.toMutableList<Parcel>()
-      for(p in parcels) {
-        p.selected = parcel.id == p.id
-      }
-      currentState.copy(parcels = parcels,
-        recompose = !currentState.recompose)
-    }
+  fun selectParcel(parcel: Parcel) {
+    // _mapUiState.update { currentState ->
+    //   val parcels = currentState.parcels.toMutableList<Parcel>()
+    //   for(p in parcels) {
+    //     p.selected = parcel.id == p.id
+    //   }
+    //   currentState.copy(parcels = parcels,
+    //     recompose = !currentState.recompose)
+    // }
     _parcelState.update { currentState ->
       currentState.copy(
         parcel = parcel
