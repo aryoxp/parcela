@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Parcela</string>
+    <string name="app_title">Parcela v0.1 Composable</string>
+    <string name="app_copyright">© 2025 Aryo Pinandito.\nMedia, Game, and Mobile Laboratory\nAll rights reserved.</string>
 </resources>

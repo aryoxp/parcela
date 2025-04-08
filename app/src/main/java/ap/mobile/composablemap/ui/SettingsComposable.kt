@@ -40,12 +40,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
-import ap.mobile.composablemap.PreferenceRepository
 import ap.mobile.composablemap.PreferenceRepository.Preference.Type
 import ap.mobile.composablemap.PreferenceState
 import ap.mobile.composablemap.PreferencesKeys
+import ap.mobile.composablemap.R
 import ap.mobile.composablemap.ui.icons.ParcelaIcons
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -54,7 +55,9 @@ fun SettingsScreenTopAppBar(onBackButtonClick: () -> Unit) {
   CenterAlignedTopAppBar(
     title = { Text("Settings") },
     navigationIcon = {
-      IconButton(onClick = onBackButtonClick ) {
+      IconButton(onClick = {
+        onBackButtonClick()
+      } ) {
         Icon(
           imageVector = Icons.AutoMirrored.Filled.ArrowBack,
           contentDescription = "Localized description"
@@ -123,11 +126,11 @@ fun AppVersion(versionText: String, copyrights: String, onClick: () -> Unit) {
       )
 
       Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(versionText, style = MaterialTheme.typography.bodySmall,
+        Text(versionText, style = MaterialTheme.typography.bodyMedium,
           color = MaterialTheme.colorScheme.primary)
         Text(
           copyrights,
-          style = MaterialTheme.typography.bodySmall,
+          style = MaterialTheme.typography.bodyMedium,
           color = MaterialTheme.colorScheme.onSurface.copy(0.7f)
         )
       }
@@ -138,13 +141,10 @@ fun AppVersion(versionText: String, copyrights: String, onClick: () -> Unit) {
 @Composable
 fun SettingsScreenPreferenceList(
   padding: PaddingValues,
-  categoryItems : Map<String, PreferenceState>,
+  categoryItems : Map<String, String>,
   onCategoryItemClick: (preferencesKey: String) -> Unit,
   onUpdateSwitchPreference: (String, Boolean) -> Unit
 ) {
-  val host = categoryItems[PreferencesKeys.HOST]
-  val optMethod = categoryItems[PreferencesKeys.OPT_METHOD]
-  val useOnlineApi = categoryItems[PreferencesKeys.USE_API]
   Column(
     modifier = Modifier
       .padding(paddingValues = padding)
@@ -153,27 +153,27 @@ fun SettingsScreenPreferenceList(
     CategoryItem(
       "Host",
       ParcelaIcons.Server,
-      value = host?.friendlyValue ?: "",
+      value = categoryItems[PreferencesKeys.HOST].toString(),
       onClick = { onCategoryItemClick(PreferencesKeys.HOST) }
     )
     CategoryItem(
       "Optimization Method",
       ParcelaIcons.Automation,
-      value = optMethod?.friendlyValue ?: "",
+      value = categoryItems[PreferencesKeys.OPT_METHOD].toString(),
       onClick = { onCategoryItemClick(PreferencesKeys.OPT_METHOD) }
     )
     SwitchCategoryItem(
       "Online API Utilization",
       ParcelaIcons.CloudSync,
-      value = useOnlineApi?.value.toBoolean(),
+      value = categoryItems[PreferencesKeys.USE_API].toBoolean(), // useOnlineApi?.value.toBoolean(),
       onCheckedChange = {
         onUpdateSwitchPreference(PreferencesKeys.USE_API, it)
       }
     )
     HorizontalDivider(Modifier.size(1.dp))
     AppVersion(
-      "Parcela v0.1 Composable",
-      "\u00a9 2025 Aryo Pinandito.\nMedia, Game, and Mobile Laboratory\nAll rights reserved."
+      stringResource(R.string.app_title),
+      stringResource(R.string.app_copyright)
     ) { }
   }
 }
@@ -218,7 +218,8 @@ fun PreferenceDialog(
             Column(Modifier.selectableGroup()) {
               for (option in preferenceOptions.keys) {
                 Row(
-                  Modifier.fillMaxWidth()
+                  Modifier
+                    .fillMaxWidth()
                     .height(56.dp)
                     .selectable(
                       selected = (option == selectedOption),

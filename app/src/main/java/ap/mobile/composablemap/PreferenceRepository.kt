@@ -178,18 +178,4 @@ class PreferenceRepository(
     }
   }
 
-  // fun getOptMethod(): Flow<String> = dataStore.data
-  //   .map { preferences ->
-  //     preferences[PreferencesKeys.OPT_METHOD]?: "RANDOM"
-  //   }
-
-  // suspend fun setOptMethod(optMethod: String) {
-  //   dataStore.edit { settings ->
-  //     val currentCounterValue = settings[PreferencesKeys.OPT_METHOD] ?: "RANDOM"
-  //     settings[PreferencesKeys.OPT_METHOD] = optMethod
-  //   }
-  // }
-
-
-
 }

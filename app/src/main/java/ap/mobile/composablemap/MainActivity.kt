@@ -8,14 +8,15 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedContentTransitionScope
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.TweenSpec
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.fillMaxSize
@@ -24,6 +25,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -32,8 +34,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.unit.IntOffset
 import androidx.core.content.ContextCompat
-import androidx.navigation.NavController
+import androidx.core.view.WindowCompat
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -74,46 +78,88 @@ class MainActivity : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     enableEdgeToEdge()
-    val vmSettings = SettingsViewModel(this)
     setContent {
       AppTheme(darkTheme = false, dynamicColor = false) {
-        MyScaffold(vmSettings)
+        MyScaffold()
       }
     }
   }
 
   @OptIn(ExperimentalMaterial3Api::class)
   @Composable
-  fun MyScaffold(vmSettings: SettingsViewModel) {
+  fun MyScaffold() {
     val rootNavController: NavHostController = rememberNavController()
+    val vmSettings = SettingsViewModel(findActivity())
+    val settingsUiState by vmSettings.settingsUiState.collectAsState()
+    val fadeAnimationSpec = TweenSpec<Float>(500, easing = FastOutSlowInEasing)
+    val animationSpec = TweenSpec<IntOffset>(500, easing = FastOutSlowInEasing)
+
+    val window = (LocalActivity.current as Activity).window
+    val view = LocalView.current
+
+    SideEffect {
+      // force light mode for status bar items
+      WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = true
+    }
+
     NavHost(navController = rootNavController,
-      startDestination = Nav.Main) {
+      startDestination = Nav.Main,
+      enterTransition = {
+        fadeIn(animationSpec = fadeAnimationSpec) + slideIntoContainer(
+          animationSpec = animationSpec,
+          towards = AnimatedContentTransitionScope.SlideDirection.Start
+        )
+      },
+      exitTransition = {
+        fadeOut(animationSpec = fadeAnimationSpec) + slideOutOfContainer(
+          animationSpec = animationSpec,
+          towards = AnimatedContentTransitionScope.SlideDirection.Start
+        )
+      },
+      popEnterTransition = {
+        fadeIn(animationSpec = fadeAnimationSpec
+        ) + slideIntoContainer(
+          animationSpec = animationSpec,
+          towards = AnimatedContentTransitionScope.SlideDirection.End
+        )
+      },
+      popExitTransition = {
+        fadeOut(animationSpec = fadeAnimationSpec) + slideOutOfContainer(
+          animationSpec = animationSpec,
+          towards = AnimatedContentTransitionScope.SlideDirection.End
+        )
+      }
+    ) {
       composable<Nav.Main> {
-        MainScreen(rootNavController)
+        MainScreen(
+          onNavigate = { rootNavController.navigate(it) },
+          onConfirmExit = { findActivity().finish() }
+        )
       }
       composable<Nav.Settings> {
-        SettingsScreen(rootNavController, vmSettings)
+        SettingsScreen(
+          state = settingsUiState,
+          onSetPreference = { key -> vmSettings.setPreference(key) },
+          onClearPreference = { vmSettings.clearPreference() },
+          onUpdatePreference = { key, value -> vmSettings.updatePreference(key, value) },
+          onUpdateSwitchPreference = { key, value -> vmSettings.updateSwitchPreference(key, value) },
+          onBackButtonClick = { rootNavController.popBackStack() }
+        )
       }
     }
   }
 
   @Composable
-  fun MainScreen(rootNavController: NavHostController) {
-    MainScaffold(rootNavController = rootNavController, onConfirmExit = {
-      findActivity().finish()
-    })
-  }
-
-  @Composable
-  fun MainScaffold(
-    rootNavController: NavController,
+  fun MainScreen(
+    onNavigate: (Nav) -> Unit,
     onConfirmExit: (Boolean) -> Unit
   ) {
     var tabIndex by remember { mutableIntStateOf(0) }
     var showExitDialog by remember { mutableStateOf(false) }
     val mapUiState by vm.mapUiState.collectAsState()
-
     val mainNavController = rememberNavController()
+    val fadeAnimationSpec = TweenSpec<Float>(500, easing = FastOutSlowInEasing)
+    val animationSpec = TweenSpec<IntOffset>(500, easing = FastOutSlowInEasing)
 
     Scaffold(modifier = Modifier.fillMaxSize(),
       containerColor = MaterialTheme.colorScheme.surface,
@@ -126,9 +172,7 @@ class MainActivity : ComponentActivity() {
             tabIndex = 0
           }
         },
-        onNavigate = { destination ->
-          rootNavController.navigate(destination)
-        }
+        onNavigate = { destination -> onNavigate(destination) }
       ) },
       bottomBar = { BottomNavigationBar(tabIndex, onNavigate = { index ->
         when (index) {
@@ -161,46 +205,30 @@ class MainActivity : ComponentActivity() {
         navController = mainNavController,
         startDestination = NavMain.Map,
         enterTransition = {
-          fadeIn(
-            animationSpec = tween(
-              300, easing = LinearEasing
-            )
-          ) + slideIntoContainer(
-            animationSpec = tween(300, easing = LinearEasing),
+          fadeIn(animationSpec = fadeAnimationSpec) + slideIntoContainer(
+            animationSpec = animationSpec,
             towards = AnimatedContentTransitionScope.SlideDirection.Start
           )
         },
         exitTransition = {
-          fadeOut(
-            animationSpec = tween(
-              300, easing = LinearEasing
-            )
-          ) + slideOutOfContainer(
-            animationSpec = tween(300, easing = LinearEasing),
+          fadeOut(animationSpec = fadeAnimationSpec) + slideOutOfContainer(
+            animationSpec = animationSpec,
             towards = AnimatedContentTransitionScope.SlideDirection.Start
           )
         },
         popEnterTransition = {
-          fadeIn(
-            animationSpec = tween(
-              300, easing = LinearEasing
-            )
+          fadeIn(animationSpec = fadeAnimationSpec
           ) + slideIntoContainer(
-            animationSpec = tween(300, easing = LinearEasing),
+            animationSpec = animationSpec,
             towards = AnimatedContentTransitionScope.SlideDirection.End
           )
         },
         popExitTransition = {
-          fadeOut(
-            animationSpec = tween(
-              300, easing = LinearEasing
-            )
-          ) + slideOutOfContainer(
-            animationSpec = tween(300, easing = LinearEasing),
+          fadeOut(animationSpec = fadeAnimationSpec) + slideOutOfContainer(
+            animationSpec = animationSpec,
             towards = AnimatedContentTransitionScope.SlideDirection.End
           )
-        },
-
+        }
         ) {
         composable<NavMain.Map> { // (route = MapScreen.Map.name) {
           MapDestination(modifier = Modifier.padding(padding))
@@ -314,36 +342,44 @@ class MainActivity : ComponentActivity() {
 
   @OptIn(ExperimentalMaterial3Api::class)
   @Composable
-  fun SettingsScreen(navController: NavHostController, vmSettings: SettingsViewModel) {
-    val host by vmSettings.host.collectAsState()
-    val optMethod by vmSettings.optMethod.collectAsState()
-    val useOnlineApi by vmSettings.useOnlineApi.collectAsState()
-    val state by vmSettings.settingsUiState.collectAsState()
-    Scaffold(
-      topBar = {
-        SettingsScreenTopAppBar {
-          navController.popBackStack()
-        }
-      }
-    ) { padding ->
+  fun SettingsScreen( // navController: NavHostController,
+    state: SettingsUIState,
+    onSetPreference: (String) -> Unit,
+    onClearPreference: () -> Unit,
+    onUpdatePreference: (String, String) -> Unit,
+    onUpdateSwitchPreference: (String, Boolean) -> Unit,
+    onBackButtonClick: () -> Unit,
+                     // vmSettings: SettingsViewModel,
+                     ) {
+    // val host by vmSettings.host.collectAsState()
+    // val optMethod by vmSettings.optMethod.collectAsState()
+    // val useOnlineApi by vmSettings.useOnlineApi.collectAsState()
+    // val state by vmSettings.settingsUiState.collectAsState()
+    // val host = state.hostFriendlyValues
+    // val optMethod = state.optMethodFriendlyValues
+    Scaffold(topBar = {
+        SettingsScreenTopAppBar(onBackButtonClick = { onBackButtonClick() } )
+      }) { padding ->
       SettingsScreenPreferenceList(padding, categoryItems = mapOf(
-        PreferencesKeys.HOST to host,
-        PreferencesKeys.OPT_METHOD to optMethod,
-        PreferencesKeys.USE_API to useOnlineApi
+        PreferencesKeys.HOST to state.hostFriendlyValue,
+        PreferencesKeys.OPT_METHOD to state.optMethodFriendlyValue,
+        PreferencesKeys.USE_API to state.useOnlineApiFriendlyValue
         ),
         onCategoryItemClick = {
-          vmSettings.setPreference(it)
+          onSetPreference(it)
+          // vmSettings.setPreference(it)
         },
         onUpdateSwitchPreference = {
-          key, value -> vmSettings.updateSwitchPreference(key, value)
+          // key, value -> vmSettings.updateSwitchPreference(key, value)
+          key, value -> onUpdateSwitchPreference(key, value)
         }
       )
       if (state.preference.key.isNotBlank())
-        PreferenceDialog(onDismiss = { vmSettings.clearPreference() },
+        PreferenceDialog(onDismiss = { onClearPreference() }, // vmSettings.clearPreference() },
           preference = state.preference,
           preferenceOptions = state.options,
           onUpdatePreference = {
-            key, value -> vmSettings.updatePreference(key, value)
+            key, value -> onUpdatePreference(key, value) // vmSettings.updatePreference(key, value)
           }
         )
     }
