@@ -157,6 +157,12 @@ fun SettingsScreenPreferenceList(
       onClick = { onCategoryItemClick(PreferencesKeys.HOST) }
     )
     CategoryItem(
+      "Optimizer",
+      ParcelaIcons.ConversionPath,
+      value = categoryItems[PreferencesKeys.OPTIMIZER].toString(),
+      onClick = { onCategoryItemClick(PreferencesKeys.OPTIMIZER) }
+    )
+    CategoryItem(
       "Optimization Method",
       ParcelaIcons.Automation,
       value = categoryItems[PreferencesKeys.OPT_METHOD].toString(),

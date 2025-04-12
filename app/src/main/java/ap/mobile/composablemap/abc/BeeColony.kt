@@ -1,9 +1,12 @@
 package ap.mobile.composablemap.abc
 
+import ap.mobile.composablemap.optimizer.IOptimizer
 import ap.mobile.composablemap.Parcel
+import ap.mobile.composablemap.optimizer.Delivery
+import kotlinx.coroutines.delay
 import java.util.TreeMap
 
-class Colony(
+class BeeColony (
   val parcels: List<Parcel>,
   numForager: Int = 5,
   numOnlooker: Int = 5,
@@ -11,19 +14,13 @@ class Colony(
   val cycleLimit: Int = 30,
   val progress: (progress: Float) -> Unit,
   val startAtParcel: Parcel? = null,
-) {
+) : IOptimizer {
   private val bees = mutableListOf<Bee>()
   private val foods = mutableSetOf<Food>()
 
   companion object {
     val distances = TreeMap<Int, TreeMap<Int, Double>>()
   }
-
-  data class Delivery(
-    val parcels: List<Parcel>,
-    val distance: Float = 0.0f,
-    val duration: Float = 0.0f
-  )
 
   init {
     repeat(numForager) {
@@ -46,7 +43,7 @@ class Colony(
     }
   }
 
-  fun compute() : Delivery {
+  override suspend fun compute(): Delivery {
     var bestFood: Food? = null
     var bestCycle = 0
     for (cycle in 1..cycleLimit) {

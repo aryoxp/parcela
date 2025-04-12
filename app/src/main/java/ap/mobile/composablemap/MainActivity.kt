@@ -310,6 +310,7 @@ class MainActivity : ComponentActivity() {
 
 
     val parcelState by vm.parcelState.collectAsState()
+
     BottomSheet(
       isComputing = parcelState.isComputing,
       showBottomSheet = parcelState.showParcelSheet,
@@ -318,7 +319,7 @@ class MainActivity : ComponentActivity() {
       parcel = parcelState.parcel,
       parcels = parcelState.deliveries,
       onDismiss = { vm.parcelSheet(shouldShow = false) },
-      onGetDeliveryRecommendation = { parcel -> vm.getDeliveryRecommendation(parcel) }
+      onGetDeliveryRecommendation = { parcel -> vm.getDeliveryRecommendation(context, parcel) }
     )
   }
 
@@ -326,6 +327,8 @@ class MainActivity : ComponentActivity() {
   fun DeliveryDestination(modifier: Modifier = Modifier,
                           onBackHandler: () -> Unit) {
     val uiState by vm.deliveryUiState.collectAsState()
+    val context = LocalContext.current
+
     DeliveryContent(
       modifier,
       parcels = uiState.deliveryRoute,
@@ -334,7 +337,7 @@ class MainActivity : ComponentActivity() {
       isLoading = uiState.isComputing,
       loadingProgress = uiState.computingProgress,
       onGetDeliveryRecommendation = {
-        vm.getDeliveryRecommendation()
+        vm.getDeliveryRecommendation(context)
       }
     )
     BackHandler(enabled = true) { onBackHandler() }
@@ -362,6 +365,7 @@ class MainActivity : ComponentActivity() {
       }) { padding ->
       SettingsScreenPreferenceList(padding, categoryItems = mapOf(
         PreferencesKeys.HOST to state.hostFriendlyValue,
+        PreferencesKeys.OPTIMIZER to state.optimizerFriendlyValue,
         PreferencesKeys.OPT_METHOD to state.optMethodFriendlyValue,
         PreferencesKeys.USE_API to state.useOnlineApiFriendlyValue
         ),

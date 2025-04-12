@@ -61,7 +61,7 @@ class Food(private val parcels: MutableList<Parcel>, val startAtParcel: Parcel?)
 
     while(chainB.isNotEmpty()) {
       val lastParcel = chainA.last()
-      val destMap = Colony.distances.get(lastParcel.id)
+      val destMap = BeeColony.distances.get(lastParcel.id)
       var min = Double.MAX_VALUE
       var minId = 0
       var nextParcel: Parcel? = null

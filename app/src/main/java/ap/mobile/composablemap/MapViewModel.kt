@@ -6,7 +6,8 @@ import android.location.Location
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import ap.mobile.composablemap.abc.Colony
+import ap.mobile.composablemap.abc.BeeColony
+import ap.mobile.composablemap.optimizer.Delivery
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.maps.model.LatLng
@@ -105,16 +106,20 @@ class MapViewModel() : ViewModel() {
     }
   }
 
-  fun getDeliveryRecommendation(parcel: Parcel? = null) {
+  fun getDeliveryRecommendation(context: Context, parcel: Parcel? = null) {
     _deliveryUiState.update { currentState ->
       currentState.copy(isComputing = true) }
     _parcelState.update { currentState ->
       currentState.copy(isComputing = true)
     }
+
+    val preferenceRepository : PreferenceRepository = PreferenceRepository(context)
+
     viewModelScope.launch {
-      val result = parcelRepository.computeDelivery(::setProgress, parcel)
+      val result = parcelRepository.computeDelivery(::setProgress, parcel,
+        optimizer = preferenceRepository.getString(PreferencesKeys.OPTIMIZER).toString())
       when (result) {
-        is Result.Success<Colony.Delivery> -> {
+        is Result.Success<Delivery> -> {
 
           _deliveryUiState.update { currentState ->
             currentState.copy(

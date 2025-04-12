@@ -18,6 +18,7 @@ object PreferencesKeys {
   const val OPT_METHOD = "OPT_METHOD"
   const val HOST = "HOST"
   const val USE_API = "USE_API"
+  const val OPTIMIZER = "OPTIMIZER"
 }
 
 data class PreferenceState(
@@ -98,6 +99,14 @@ class PreferenceRepository(
         "RANDOM",
         mapOf("RANDOM" to "Random", "SWITCH" to "Path Switch", "DEFAULT" to "Default"),
         mapOf("RANDOM" to "Random Optimization", "SWITCH" to "Path Switch Optimization", "DEFAULT" to "Default"),
+      ))
+    prefs.put(PreferencesKeys.OPTIMIZER,
+      ListPreference(PreferencesKeys.OPTIMIZER,
+        "Optimizer",
+        "Optimizer method applied to solve parcel delivery problem.",
+        "ACO",
+        mapOf("ACO" to "Ant Colony Optimization", "ABC" to "Artificial Bee Colony"),
+        mapOf("ACO" to "Ant Colony Optimization", "ABC" to "Artificial Bee Colony"),
       ))
     prefs.put(PreferencesKeys.HOST,
       StringPreference(PreferencesKeys.HOST,

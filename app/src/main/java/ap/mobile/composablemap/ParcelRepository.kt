@@ -1,6 +1,9 @@
 package ap.mobile.composablemap
 
-import ap.mobile.composablemap.abc.Colony
+import ap.mobile.composablemap.abc.BeeColony
+import ap.mobile.composablemap.aco.AntColony
+import ap.mobile.composablemap.optimizer.Delivery
+import ap.mobile.composablemap.optimizer.IOptimizer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -62,10 +65,16 @@ class ParcelRepository {
     return parcels.toList()
   }
 
-  suspend fun computeDelivery(progress: (Float) -> Unit, parcel: Parcel?) : Result<Colony.Delivery> {
+  suspend fun computeDelivery(
+    progress: (Float) -> Unit,
+    parcel: Parcel?,
+    optimizer: String = "ACO"
+  ) : Result<Delivery> {
     return withContext(Dispatchers.IO) {
-      var abc = Colony(parcels, progress = progress, startAtParcel = parcel)
-      val delivery = abc.compute()
+      var opt: IOptimizer = if (optimizer.equals("ABC", ignoreCase = true)) {
+        BeeColony(parcels, progress = progress, startAtParcel = parcel)
+      } else AntColony(parcels, progress = progress, startAtParcel = parcel)
+      val delivery = opt.compute()
       Result.Success(delivery)
     }
   }

@@ -26,6 +26,7 @@ class SettingsViewModel (context: Context, val preferenceRepository: PreferenceR
     _settingsUiState.update { currentState ->
       currentState.copy(
         hostFriendlyValue = preferenceRepository.getPreference(PreferencesKeys.HOST)?.toDataState()?.friendlyValue ?: "",
+        optimizerFriendlyValue = preferenceRepository.getPreference(PreferencesKeys.OPTIMIZER)?.toDataState()?.friendlyValue ?: "",
         optMethodFriendlyValue = preferenceRepository.getPreference(PreferencesKeys.OPT_METHOD)?.toDataState()?.friendlyValue ?: "",
         useOnlineApiFriendlyValue = preferenceRepository.getPreference(PreferencesKeys.USE_API)?.toDataState()?.friendlyValue ?: "",
       )

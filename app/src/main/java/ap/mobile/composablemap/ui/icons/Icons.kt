@@ -535,5 +535,83 @@ object ParcelaIcons {
 
   private var _Cloud_sync: ImageVector? = null
 
+  val ConversionPath: ImageVector
+    get() {
+      if (_conversion_path != null) {
+        return _conversion_path!!
+      }
+      _conversion_path = ImageVector.Builder(
+        name = "Conversion_path",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 960f,
+        viewportHeight = 960f
+      ).apply {
+        path(
+          fill = SolidColor(Color.Black),
+          fillAlpha = 1.0f,
+          stroke = null,
+          strokeAlpha = 1.0f,
+          strokeLineWidth = 1.0f,
+          strokeLineCap = StrokeCap.Butt,
+          strokeLineJoin = StrokeJoin.Miter,
+          strokeLineMiter = 1.0f,
+          pathFillType = PathFillType.NonZero
+        ) {
+          moveTo(760f, 840f)
+          quadToRelative(-39f, 0f, -70f, -22.5f)
+          reflectiveQuadTo(647f, 760f)
+          horizontalLineTo(440f)
+          quadToRelative(-66f, 0f, -113f, -47f)
+          reflectiveQuadToRelative(-47f, -113f)
+          reflectiveQuadToRelative(47f, -113f)
+          reflectiveQuadToRelative(113f, -47f)
+          horizontalLineToRelative(80f)
+          quadToRelative(33f, 0f, 56.5f, -23.5f)
+          reflectiveQuadTo(600f, 360f)
+          reflectiveQuadToRelative(-23.5f, -56.5f)
+          reflectiveQuadTo(520f, 280f)
+          horizontalLineTo(313f)
+          quadToRelative(-13f, 35f, -43.5f, 57.5f)
+          reflectiveQuadTo(200f, 360f)
+          quadToRelative(-50f, 0f, -85f, -35f)
+          reflectiveQuadToRelative(-35f, -85f)
+          reflectiveQuadToRelative(35f, -85f)
+          reflectiveQuadToRelative(85f, -35f)
+          quadToRelative(39f, 0f, 69.5f, 22.5f)
+          reflectiveQuadTo(313f, 200f)
+          horizontalLineToRelative(207f)
+          quadToRelative(66f, 0f, 113f, 47f)
+          reflectiveQuadToRelative(47f, 113f)
+          reflectiveQuadToRelative(-47f, 113f)
+          reflectiveQuadToRelative(-113f, 47f)
+          horizontalLineToRelative(-80f)
+          quadToRelative(-33f, 0f, -56.5f, 23.5f)
+          reflectiveQuadTo(360f, 600f)
+          reflectiveQuadToRelative(23.5f, 56.5f)
+          reflectiveQuadTo(440f, 680f)
+          horizontalLineToRelative(207f)
+          quadToRelative(13f, -35f, 43.5f, -57.5f)
+          reflectiveQuadTo(760f, 600f)
+          quadToRelative(50f, 0f, 85f, 35f)
+          reflectiveQuadToRelative(35f, 85f)
+          reflectiveQuadToRelative(-35f, 85f)
+          reflectiveQuadToRelative(-85f, 35f)
+          moveTo(200f, 280f)
+          quadToRelative(17f, 0f, 28.5f, -11.5f)
+          reflectiveQuadTo(240f, 240f)
+          reflectiveQuadToRelative(-11.5f, -28.5f)
+          reflectiveQuadTo(200f, 200f)
+          reflectiveQuadToRelative(-28.5f, 11.5f)
+          reflectiveQuadTo(160f, 240f)
+          reflectiveQuadToRelative(11.5f, 28.5f)
+          reflectiveQuadTo(200f, 280f)
+        }
+      }.build()
+      return _conversion_path!!
+    }
+
+  private var _conversion_path: ImageVector? = null
+
 
 }
