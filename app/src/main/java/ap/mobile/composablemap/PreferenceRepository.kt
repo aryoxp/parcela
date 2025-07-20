@@ -19,6 +19,7 @@ object PreferencesKeys {
   const val HOST = "HOST"
   const val USE_API = "USE_API"
   const val OPTIMIZER = "OPTIMIZER"
+  const val LOG_FILE = "LOG_FILE"
 }
 
 data class PreferenceState(
@@ -43,7 +44,7 @@ class PreferenceRepository(
     open val type: Type
   ) {
     enum class Type {
-      STRING, INT, LIST, SWITCH
+      STRING, INT, LIST, SWITCH, FILE
     }
     abstract fun toDataState() : PreferenceState
   }
@@ -90,6 +91,16 @@ class PreferenceRepository(
       return PreferenceState(key, value.toString(), value.toString(), title, description, type)
     }
   }
+  class FilePreference(
+    key: String,
+    title: String = "",
+    description: String = "",
+    var value: String = ""
+  ): Preference(key, title, description, Type.FILE) {
+    override fun toDataState(): PreferenceState {
+      return PreferenceState(key, value, "ext://$value", title, description, type)
+    }
+  }
 
   suspend fun initializeDataStore() {
     prefs.put(PreferencesKeys.OPT_METHOD,
@@ -119,12 +130,20 @@ class PreferenceRepository(
         "Online server API utilization for processing and computation.",
         false
       ))
+    prefs.put(PreferencesKeys.LOG_FILE,
+      FilePreference(PreferencesKeys.LOG_FILE,
+        "Log File",
+        "Location of Log File",
+        "Nothing"))
     for (pref in prefs.values) {
       when (pref) {
         is ListPreference -> {
           if (getString(pref.key) == null) putString(pref.key, pref.value)
         }
         is StringPreference -> {
+          if (getString(pref.key) == null) putString(pref.key, pref.value)
+        }
+        is FilePreference -> {
           if (getString(pref.key) == null) putString(pref.key, pref.value)
         }
         is IntPreference -> {
@@ -144,6 +163,7 @@ class PreferenceRepository(
       is StringPreference -> pref.value = getString(key) ?: pref.value
       is IntPreference -> pref.value = getInt(key) ?: pref.value
       is SwitchPreference -> pref.value = getBoolean(key) ?: pref.value
+      is FilePreference -> pref.value = getString(key) ?: pref.value
     }
     return pref
   }

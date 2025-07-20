@@ -1,5 +1,7 @@
 package ap.mobile.composablemap.ui
 
+import android.net.Uri
+import androidx.activity.result.ActivityResultLauncher
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.BasicAlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -68,14 +71,23 @@ fun SettingsScreenTopAppBar(onBackButtonClick: () -> Unit) {
 }
 
 @Composable
-fun CategoryItem(title: String, icon: ImageVector, value: String = "", onClick: () -> Unit) {
+fun CategoryItem(
+  title: String,
+  icon: ImageVector,
+  value: String = "",
+  onClick: () -> Unit
+) {
   Surface(
     onClick = onClick,
     shape = MaterialTheme.shapes.medium,
   ) {
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier
-      .fillMaxWidth()
-      .padding(horizontal = 16.dp, vertical = 16.dp), horizontalArrangement = Arrangement.spacedBy(30.dp)) {
+    Row(
+      verticalAlignment = Alignment.CenterVertically,
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(horizontal = 16.dp, vertical = 16.dp),
+      horizontalArrangement = Arrangement.spacedBy(30.dp)
+    ) {
       Icon(icon, contentDescription = null, modifier = Modifier.size(28.dp),
         tint = MaterialTheme.colorScheme.primary)
       Column {
@@ -176,6 +188,12 @@ fun SettingsScreenPreferenceList(
         onUpdateSwitchPreference(PreferencesKeys.USE_API, it)
       }
     )
+    CategoryItem(
+      "Log Data Location",
+      ParcelaIcons.LogFile,
+      value = categoryItems[PreferencesKeys.LOG_FILE].toString(),
+      onClick = { onCategoryItemClick(PreferencesKeys.LOG_FILE) }
+    )
     HorizontalDivider(Modifier.size(1.dp))
     AppVersion(
       stringResource(R.string.app_title),
@@ -190,8 +208,10 @@ fun PreferenceDialog(
   preference: PreferenceState,
   preferenceOptions: Map<String, String> = mapOf<String, String>(),
   onUpdatePreference: (key: String, value: String) -> Unit,
-  onDismiss: () -> Unit
+  onDismiss: () -> Unit,
+  request: ActivityResultLauncher<Uri?>
 ) {
+
   BasicAlertDialog(onDismissRequest = onDismiss) {
     Surface(
       modifier = Modifier
@@ -249,6 +269,14 @@ fun PreferenceDialog(
             }
           }
           Type.SWITCH -> {}
+          Type.FILE -> {
+            Button(onClick = {
+              request.launch(null)
+            }) {
+              Text(text = "Select File")
+            }
+            Text(text = preference.friendlyValue)
+          }
         }
         if (preference.description.isNotBlank()) {
           Text(

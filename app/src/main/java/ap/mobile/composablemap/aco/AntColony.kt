@@ -10,8 +10,14 @@ class AntColony(
   val cycleLimit: Int = 30,
   val rho: Float = .5f,
   val progress: (progress: Float) -> Unit,
+  val report: (cycle: Int, fitness: Double) -> Unit,
   val startAtParcel: Parcel? = null,
 ) : IOptimizer {
+
+  override var bestCycle: Int = 0
+    private set
+  override var fitness: Double = 0.0
+    private set
 
   companion object {
     private val ants = mutableListOf<Ant>()
@@ -66,10 +72,13 @@ class AntColony(
         if (bestPath == null || path.sugar < bestPath.sugar) {
           bestPath = path
           bestCycle = cycle
+          this.bestCycle = bestCycle
+          this.fitness = bestPath.sugar
         }
       }
 
-      println("Best Path ${bestCycle}/${cycle}: ${bestPath?.sugar}")
+      // println("Best Path ${bestCycle}/${cycle}: ${bestPath?.sugar}")
+      report(cycle, bestPath?.sugar ?: 0.0)
       progress(cycle.toFloat() / cycleLimit.toFloat())
       // delay(10)
     }

@@ -3,10 +3,11 @@ package ap.mobile.composablemap
 import android.content.Context
 import android.content.pm.PackageManager
 import android.location.Location
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import ap.mobile.composablemap.abc.BeeColony
 import ap.mobile.composablemap.optimizer.Delivery
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationRequest
@@ -21,9 +22,9 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
-class MapViewModel() : ViewModel() {
+class MapViewModel(val context: Context) : ViewModel() {
 
-  private val parcelRepository: ParcelRepository = ParcelRepository()
+  private val parcelRepository: ParcelRepository = ParcelRepository(context = context)
 
   private val _mapUiState = MutableStateFlow(MapUiState())
   val mapUiState: StateFlow<MapUiState> = _mapUiState.asStateFlow()
@@ -93,7 +94,7 @@ class MapViewModel() : ViewModel() {
 
   fun getParcels() {
     viewModelScope.launch {
-      val parcels = ParcelRepository().getAllParcels()
+      val parcels = ParcelRepository(context = context).getAllParcels()
       _parcelState.update { currentState ->
         currentState.copy(parcels = parcels)
       }
@@ -106,6 +107,7 @@ class MapViewModel() : ViewModel() {
     }
   }
 
+  @RequiresApi(Build.VERSION_CODES.Q)
   fun getDeliveryRecommendation(context: Context, parcel: Parcel? = null) {
     _deliveryUiState.update { currentState ->
       currentState.copy(isComputing = true) }
@@ -116,8 +118,11 @@ class MapViewModel() : ViewModel() {
     val preferenceRepository : PreferenceRepository = PreferenceRepository(context)
 
     viewModelScope.launch {
-      val result = parcelRepository.computeDelivery(::setProgress, parcel,
-        optimizer = preferenceRepository.getString(PreferencesKeys.OPTIMIZER).toString())
+      val result = parcelRepository.computeDelivery(
+        ::setProgress,
+        parcel,
+        optimizer = preferenceRepository.getString(PreferencesKeys.OPTIMIZER).toString()
+      )
       when (result) {
         is Result.Success<Delivery> -> {
 

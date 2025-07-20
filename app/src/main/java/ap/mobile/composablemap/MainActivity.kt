@@ -4,7 +4,10 @@ import android.Manifest
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -12,8 +15,10 @@ import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.TweenSpec
@@ -43,6 +48,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import ap.mobile.composablemap.optimizer.Logger
 import ap.mobile.composablemap.ui.AppBar
 import ap.mobile.composablemap.ui.BottomNavigationBar
 import ap.mobile.composablemap.ui.BottomSheet
@@ -58,11 +64,14 @@ import com.google.maps.android.compose.MapsComposeExperimentalApi
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.serialization.Serializable
 import timber.log.Timber
+import java.net.URLDecoder
+
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
-  private val vm: MapViewModel by viewModels()
+  private val vm: MapViewModel = MapViewModel(this)
+
 
   sealed class Nav {
     @Serializable object Main : Nav()
@@ -75,27 +84,41 @@ class MainActivity : ComponentActivity() {
     @Serializable object Delivery : NavMain()
   }
 
+
+  @RequiresApi(Build.VERSION_CODES.Q)
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     enableEdgeToEdge()
+    val vmSettings = SettingsViewModel(findActivity())
+    val request = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+      uri?.let {
+        // call this to persist permission across device reboots
+        contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+        var decoded = URLDecoder.decode(uri.toString(), "UTF-8")
+        val path = decoded.substringAfterLast(":")
+        vmSettings.updatePreference(PreferencesKeys.LOG_FILE, path)
+        vmSettings.clearPreference()
+        Logger.saveFile(this, path, "data.csv")
+      }
+    }
     setContent {
       AppTheme(darkTheme = false, dynamicColor = false) {
-        MyScaffold()
+        MyScaffold(request, vmSettings)
       }
     }
   }
 
   @OptIn(ExperimentalMaterial3Api::class)
   @Composable
-  fun MyScaffold() {
+  fun MyScaffold(request: ActivityResultLauncher<Uri?>, vmSettings: SettingsViewModel) {
     val rootNavController: NavHostController = rememberNavController()
-    val vmSettings = SettingsViewModel(findActivity())
     val settingsUiState by vmSettings.settingsUiState.collectAsState()
     val fadeAnimationSpec = TweenSpec<Float>(500, easing = FastOutSlowInEasing)
     val animationSpec = TweenSpec<IntOffset>(500, easing = FastOutSlowInEasing)
 
     val window = (LocalActivity.current as Activity).window
     val view = LocalView.current
+
 
     SideEffect {
       // force light mode for status bar items
@@ -143,7 +166,8 @@ class MainActivity : ComponentActivity() {
           onClearPreference = { vmSettings.clearPreference() },
           onUpdatePreference = { key, value -> vmSettings.updatePreference(key, value) },
           onUpdateSwitchPreference = { key, value -> vmSettings.updateSwitchPreference(key, value) },
-          onBackButtonClick = { rootNavController.popBackStack() }
+          onBackButtonClick = { rootNavController.popBackStack() },
+          request = request
         )
       }
     }
@@ -345,15 +369,17 @@ class MainActivity : ComponentActivity() {
 
   @OptIn(ExperimentalMaterial3Api::class)
   @Composable
-  fun SettingsScreen( // navController: NavHostController,
+  fun SettingsScreen(
+    // navController: NavHostController,
     state: SettingsUIState,
     onSetPreference: (String) -> Unit,
     onClearPreference: () -> Unit,
     onUpdatePreference: (String, String) -> Unit,
     onUpdateSwitchPreference: (String, Boolean) -> Unit,
     onBackButtonClick: () -> Unit,
-                     // vmSettings: SettingsViewModel,
-                     ) {
+    request: ActivityResultLauncher<Uri?>,
+    // vmSettings: SettingsViewModel,
+  ) {
     // val host by vmSettings.host.collectAsState()
     // val optMethod by vmSettings.optMethod.collectAsState()
     // val useOnlineApi by vmSettings.useOnlineApi.collectAsState()
@@ -367,7 +393,8 @@ class MainActivity : ComponentActivity() {
         PreferencesKeys.HOST to state.hostFriendlyValue,
         PreferencesKeys.OPTIMIZER to state.optimizerFriendlyValue,
         PreferencesKeys.OPT_METHOD to state.optMethodFriendlyValue,
-        PreferencesKeys.USE_API to state.useOnlineApiFriendlyValue
+        PreferencesKeys.USE_API to state.useOnlineApiFriendlyValue,
+        PreferencesKeys.LOG_FILE to state.logFileFriendlyValue
         ),
         onCategoryItemClick = {
           onSetPreference(it)
@@ -384,7 +411,8 @@ class MainActivity : ComponentActivity() {
           preferenceOptions = state.options,
           onUpdatePreference = {
             key, value -> onUpdatePreference(key, value) // vmSettings.updatePreference(key, value)
-          }
+          },
+          request = request
         )
     }
   }

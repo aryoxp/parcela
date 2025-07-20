@@ -13,10 +13,17 @@ class BeeColony (
   val forageLimit: Int = 50,
   val cycleLimit: Int = 30,
   val progress: (progress: Float) -> Unit,
+  val report: (cycle: Int, fitness: Double) -> Unit,
   val startAtParcel: Parcel? = null,
 ) : IOptimizer {
   private val bees = mutableListOf<Bee>()
-  private val foods = mutableSetOf<Food>()
+  // private val foods = mutableSetOf<Food>()
+  private val processedAltar = mutableListOf<Food>()
+
+  override var bestCycle: Int = 0
+    private set
+  override var fitness: Double = 0.0
+    private set
 
   companion object {
     val distances = TreeMap<Int, TreeMap<Int, Double>>()
@@ -27,7 +34,7 @@ class BeeColony (
       val bee = Bee(Bee.Type.SCOUT, forageLimit = forageLimit)
       bees.add(bee)
       // initialize foods in dancing altar
-      foods.add(bee.scout(parcels, startAtParcel))
+      processedAltar.add(bee.scout(parcels, startAtParcel))
       bee.becomeEmployed()
     }
     repeat(numOnlooker) {
@@ -41,19 +48,20 @@ class BeeColony (
       }
       distances[pa.id] = destMap
     }
+    processedAltar.sortWith(compareBy(Food::nectar))
   }
 
   override suspend fun compute(): Delivery {
     var bestFood: Food? = null
     var bestCycle = 0
     for (cycle in 1..cycleLimit) {
-      println("Cycle $cycle")
+      // println("\nCycle $cycle")
       // Employed Phase
-      val processedAltar = mutableListOf<Food>()
+
       for (bee in bees) {
         if (bee.type == Bee.Type.EMPLOYED) {
-          print("${bee.type.name}.")
-          val food = foods.first().also { foods.remove(it) }
+          // print("${bee.type.name}.")
+          val food = processedAltar.first().also { processedAltar.remove(it) }
           processedAltar.add(bee.takeAndOptimizeFood(food))
           bee.becomeScout()
         }
@@ -61,17 +69,25 @@ class BeeColony (
       // Dancing Phase
       processedAltar.sortBy { it.nectar }
       var altarBestFood = processedAltar.first()
+      // println("Altar Best Food nectar: ${altarBestFood.nectar}")
 
       // Onlooker Phase
       for (bee in bees) {
         if (bee.type == Bee.Type.ONLOOKER) {
-          print("${bee.type.name}.")
+          // print("${bee.type.name}.")
           var food = processedAltar.first().also { processedAltar.remove(it) }
+          // print("Food nectar before lookup: ${food.nectar} ")
           food = bee.lookupFood(food)
-          if (food.nectar < altarBestFood.nectar)
+          // println("After lookup: ${food.nectar} ")
+          processedAltar.add(food)
+          if (food.nectar < altarBestFood.nectar) {
             altarBestFood = food
+            // println("Updating food from lookup: ${food.nectar} ")
+          }
         }
       }
+
+      processedAltar.sortWith(compareBy(Food::nectar))
 
       // Finding best food for all time
       if (bestFood == null) {
@@ -80,19 +96,27 @@ class BeeColony (
       } else if (altarBestFood.nectar < bestFood.nectar) {
         bestFood = altarBestFood
         bestCycle = cycle
+        this.bestCycle = bestCycle
       }
 
       // Scout Phase
-      foods.clear()
+      // foods.clear()
       for (bee in bees) {
         if (bee.type == Bee.Type.SCOUT) {
-          foods.add(bee.scout(parcels, startAtParcel))
+          // foods.add(bee.scout(parcels, startAtParcel))
+          val food = bee.scout(parcels, startAtParcel)
+          if (food.nectar < processedAltar.last().nectar) {
+            // println("\nScout find better food during scout.")
+            processedAltar.removeAt(processedAltar.lastIndex)
+            processedAltar.add(food)
+          }
           bee.becomeEmployed()
         }
       }
-      println("Altar Best Food ${altarBestFood.nectar}")
-      println("Best Food ${bestCycle}/${cycle}: ${bestFood.nectar}")
-
+      // println("Altar Best Food ${altarBestFood.nectar}")
+      // println("Best Food ${bestCycle}/${cycle}: ${bestFood.nectar}")
+      this.fitness = altarBestFood.nectar
+      report(cycle, altarBestFood.nectar)
       progress(cycle.toFloat() / cycleLimit.toFloat())
       // delay(10)
     }

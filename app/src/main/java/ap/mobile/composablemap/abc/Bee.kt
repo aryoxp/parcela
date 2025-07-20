@@ -11,22 +11,22 @@ class Bee(var type: Type, val forageLimit: Int = 5) {
   }
 
   fun takeAndOptimizeFood(food: Food) : Food {
-    print("Take and Optimizing...")
+    // print("Take and Optimizing...")
     for(i in 1..forageLimit) {
       food.optimize()
-      print("${i}.")
+      // print("${i}.")
     }
-    println("")
+    // println("")
     return food
   }
 
   fun lookupFood(food: Food) : Food {
-    print("Take and Optimizing...")
+    // print("Take and Optimizing...")
     for(i in 1..forageLimit) {
       food.lookup()
-      print("${i}.")
+      // print("${i}.")
     }
-    println("")
+    // println("")
     return food
   }
 

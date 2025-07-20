@@ -617,31 +617,39 @@ private fun MyCustomRendererClustering(
     },
     clusterItemContent = {
       val selected = it.isSelected
-      Column(
-        modifier = Modifier.size(width = 56.dp, height = 56.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-      ) {
-        val modifier =
-          ((Modifier.doublePulseEffect(targetScale = 2f).takeIf { selected } ?: Modifier)
-            .size(28.dp).takeIf { selected } ?: Modifier.size(20.dp))
-        CircleContent(
-          modifier = modifier,
-          text = "",
-          color = Color.hsl(345f, .92f, .40f).takeIf { selected } ?: Color.hsl(209f, .92f, .40f),
-        )
-        // FilledIconButton(
-        //   onClick = {},
-        //   modifier = Modifier.doublePulseEffect(
-        //     targetScale = 2f
-        //   ).size(42.dp)
-        // ) {
-        //   Icon(
-        //     imageVector = Icons.Default.Adjust, contentDescription = "",
-        //   )
-        // }
-      }
+      CircleContent(
+        modifier = Modifier.size(24.dp),
+        text = "",
+        color = Color.hsl(345f, .92f, .40f).takeIf { selected } ?: Color.hsl(209f, .92f, .40f),
+      )
     },
+    // clusterItemContent = {
+    //   val selected = it.isSelected
+    //   Column(
+    //     modifier = Modifier.size(width = 56.dp, height = 56.dp),
+    //     horizontalAlignment = Alignment.CenterHorizontally,
+    //     verticalArrangement = Arrangement.Center
+    //   ) {
+    //     val modifier =
+    //       ((Modifier.doublePulseEffect(targetScale = 2f).takeIf { selected } ?: Modifier)
+    //         .size(28.dp).takeIf { selected } ?: Modifier.size(20.dp))
+    //     CircleContent(
+    //       modifier = modifier,
+    //       text = "",
+    //       color = Color.hsl(345f, .92f, .40f).takeIf { selected } ?: Color.hsl(209f, .92f, .40f),
+    //     )
+    //     // FilledIconButton(
+    //     //   onClick = {},
+    //     //   modifier = Modifier.doublePulseEffect(
+    //     //     targetScale = 2f
+    //     //   ).size(42.dp)
+    //     // ) {
+    //     //   Icon(
+    //     //     imageVector = Icons.Default.Adjust, contentDescription = "",
+    //     //   )
+    //     // }
+    //   }
+    // },
     clusterManager = clusterManager,
   )
 

@@ -6,5 +6,6 @@ data class SettingsUIState (
   val hostFriendlyValue: String = "",
   val optimizerFriendlyValue: String = "",
   val optMethodFriendlyValue: String = "",
-  val useOnlineApiFriendlyValue: String = ""
+  val useOnlineApiFriendlyValue: String = "",
+  val logFileFriendlyValue: String = ""
 )

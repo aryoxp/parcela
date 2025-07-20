@@ -29,6 +29,7 @@ class SettingsViewModel (context: Context, val preferenceRepository: PreferenceR
         optimizerFriendlyValue = preferenceRepository.getPreference(PreferencesKeys.OPTIMIZER)?.toDataState()?.friendlyValue ?: "",
         optMethodFriendlyValue = preferenceRepository.getPreference(PreferencesKeys.OPT_METHOD)?.toDataState()?.friendlyValue ?: "",
         useOnlineApiFriendlyValue = preferenceRepository.getPreference(PreferencesKeys.USE_API)?.toDataState()?.friendlyValue ?: "",
+        logFileFriendlyValue = preferenceRepository.getPreference(PreferencesKeys.LOG_FILE)?.toDataState()?.friendlyValue ?: "",
       )
     }
   }

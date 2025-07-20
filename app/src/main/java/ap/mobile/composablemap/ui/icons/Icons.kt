@@ -614,4 +614,100 @@ object ParcelaIcons {
   private var _conversion_path: ImageVector? = null
 
 
+  val LogFile: ImageVector
+    get() {
+      if (_logfile != null) {
+        return _logfile!!
+      }
+      _logfile = ImageVector.Builder(
+        name = "ActivityLog",
+        defaultWidth = 15.dp,
+        defaultHeight = 15.dp,
+        viewportWidth = 15f,
+        viewportHeight = 15f
+      ).apply {
+        path(
+          fill = SolidColor(Color(0xFF000000)),
+          fillAlpha = 1.0f,
+          stroke = null,
+          strokeAlpha = 1.0f,
+          strokeLineWidth = 1.0f,
+          strokeLineCap = StrokeCap.Butt,
+          strokeLineJoin = StrokeJoin.Miter,
+          strokeLineMiter = 1.0f,
+          pathFillType = PathFillType.EvenOdd
+        ) {
+          moveTo(0f, 1.5f)
+          curveTo(0f, 1.2239f, 0.2239f, 1f, 0.5f, 1f)
+          horizontalLineTo(2.5f)
+          curveTo(2.7761f, 1f, 3f, 1.2239f, 3f, 1.5f)
+          curveTo(3f, 1.7761f, 2.7761f, 2f, 2.5f, 2f)
+          horizontalLineTo(0.5f)
+          curveTo(0.2239f, 2f, 0f, 1.7761f, 0f, 1.5f)
+          close()
+          moveTo(4f, 1.5f)
+          curveTo(4f, 1.2239f, 4.2239f, 1f, 4.5f, 1f)
+          horizontalLineTo(14.5f)
+          curveTo(14.7761f, 1f, 15f, 1.2239f, 15f, 1.5f)
+          curveTo(15f, 1.7761f, 14.7761f, 2f, 14.5f, 2f)
+          horizontalLineTo(4.5f)
+          curveTo(4.2239f, 2f, 4f, 1.7761f, 4f, 1.5f)
+          close()
+          moveTo(4f, 4.5f)
+          curveTo(4f, 4.2239f, 4.2239f, 4f, 4.5f, 4f)
+          horizontalLineTo(11.5f)
+          curveTo(11.7761f, 4f, 12f, 4.2239f, 12f, 4.5f)
+          curveTo(12f, 4.7761f, 11.7761f, 5f, 11.5f, 5f)
+          horizontalLineTo(4.5f)
+          curveTo(4.2239f, 5f, 4f, 4.7761f, 4f, 4.5f)
+          close()
+          moveTo(0f, 7.5f)
+          curveTo(0f, 7.2239f, 0.2239f, 7f, 0.5f, 7f)
+          horizontalLineTo(2.5f)
+          curveTo(2.7761f, 7f, 3f, 7.2239f, 3f, 7.5f)
+          curveTo(3f, 7.7761f, 2.7761f, 8f, 2.5f, 8f)
+          horizontalLineTo(0.5f)
+          curveTo(0.2239f, 8f, 0f, 7.7761f, 0f, 7.5f)
+          close()
+          moveTo(4f, 7.5f)
+          curveTo(4f, 7.2239f, 4.2239f, 7f, 4.5f, 7f)
+          horizontalLineTo(14.5f)
+          curveTo(14.7761f, 7f, 15f, 7.2239f, 15f, 7.5f)
+          curveTo(15f, 7.7761f, 14.7761f, 8f, 14.5f, 8f)
+          horizontalLineTo(4.5f)
+          curveTo(4.2239f, 8f, 4f, 7.7761f, 4f, 7.5f)
+          close()
+          moveTo(4f, 10.5f)
+          curveTo(4f, 10.2239f, 4.2239f, 10f, 4.5f, 10f)
+          horizontalLineTo(11.5f)
+          curveTo(11.7761f, 10f, 12f, 10.2239f, 12f, 10.5f)
+          curveTo(12f, 10.7761f, 11.7761f, 11f, 11.5f, 11f)
+          horizontalLineTo(4.5f)
+          curveTo(4.2239f, 11f, 4f, 10.7761f, 4f, 10.5f)
+          close()
+          moveTo(0f, 13.5f)
+          curveTo(0f, 13.2239f, 0.2239f, 13f, 0.5f, 13f)
+          horizontalLineTo(2.5f)
+          curveTo(2.7761f, 13f, 3f, 13.2239f, 3f, 13.5f)
+          curveTo(3f, 13.7761f, 2.7761f, 14f, 2.5f, 14f)
+          horizontalLineTo(0.5f)
+          curveTo(0.2239f, 14f, 0f, 13.7761f, 0f, 13.5f)
+          close()
+          moveTo(4f, 13.5f)
+          curveTo(4f, 13.2239f, 4.2239f, 13f, 4.5f, 13f)
+          horizontalLineTo(14.5f)
+          curveTo(14.7761f, 13f, 15f, 13.2239f, 15f, 13.5f)
+          curveTo(15f, 13.7761f, 14.7761f, 14f, 14.5f, 14f)
+          horizontalLineTo(4.5f)
+          curveTo(4.2239f, 14f, 4f, 13.7761f, 4f, 13.5f)
+          close()
+        }
+      }.build()
+      return _logfile!!
+    }
+
+  private var _logfile: ImageVector? = null
+
+
+
 }
