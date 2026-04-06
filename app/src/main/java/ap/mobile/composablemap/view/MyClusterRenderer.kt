@@ -1,6 +1,7 @@
-package ap.mobile.composablemap
+package ap.mobile.composablemap.view
 
 import android.content.Context
+import ap.mobile.composablemap.model.Parcel
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.maps.android.clustering.Cluster
@@ -8,10 +9,10 @@ import com.google.maps.android.clustering.ClusterManager
 import com.google.maps.android.clustering.view.DefaultClusterRenderer
 
 class MyClusterRenderer(context: Context,
-                        map: GoogleMap, clusterManager: ClusterManager<ParcelItem>
-) : DefaultClusterRenderer<ParcelItem>(context, map, clusterManager) {
+                        map: GoogleMap, clusterManager: ClusterManager<Parcel>
+) : DefaultClusterRenderer<Parcel>(context, map, clusterManager) {
 
-  override fun onBeforeClusterRendered(cluster: Cluster<ParcelItem>, markerOptions: MarkerOptions) {
+  override fun onBeforeClusterRendered(cluster: Cluster<Parcel>, markerOptions: MarkerOptions) {
     // set anchor if present
     markerOptions.anchor(.5f, .5f)
     // markerAnchorConfig?.getAnchorOffsetFor(cluster.items.first(), true)?.let {
@@ -21,7 +22,7 @@ class MyClusterRenderer(context: Context,
     super.onBeforeClusterRendered(cluster, markerOptions)
   }
 
-  override fun onBeforeClusterItemRendered(item: ParcelItem, markerOptions: MarkerOptions) {
+  override fun onBeforeClusterItemRendered(item: Parcel, markerOptions: MarkerOptions) {
     // set anchor if present
     // markerAnchorConfig?.getAnchorOffsetFor(item, false)?.let { offset ->
     //   markerOptions.anchor(offset.x, offset.y)

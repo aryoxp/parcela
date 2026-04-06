@@ -1,17 +1,19 @@
 package ap.mobile.composablemap.aco
 
-import ap.mobile.composablemap.Parcel
+import ap.mobile.composablemap.model.ParcelMapItem
 import ap.mobile.composablemap.optimizer.Delivery
 import ap.mobile.composablemap.optimizer.IOptimizer
 
 class AntColony(
-  val parcels: List<Parcel>,
+  val parcels: List<ParcelMapItem>,
   numAnts: Int = 10,
-  val cycleLimit: Int = 30,
+  val cycleLimit: Int = 100,
+  val cycleConvergence: Int = 30,
   val rho: Float = .5f,
   val progress: (progress: Float) -> Unit,
   val report: (cycle: Int, fitness: Double) -> Unit,
-  val startAtParcel: Parcel? = null,
+  val startAtParcel: ParcelMapItem? = null,
+  val useHeuristicInit: Boolean? = false
 ) : IOptimizer {
 
   override var bestCycle: Int = 0
@@ -39,10 +41,12 @@ class AntColony(
       for (pb in parcels) {
         val d = Path.distance(pa, pb)
         destMap[pb.id] = d
-        // Initialize pheromones with its inverse distance
-        // instead of 1.0
-        // Nearest destination is more preferred
-        pheromoneMap[pb.id] = 1/d // 1.0
+        if (useHeuristicInit == true)
+          // Initialize pheromones with its inverse distance
+          // instead of 1.0
+          // Nearest destination is more preferred
+          pheromoneMap[pb.id] = 1 / d
+        else pheromoneMap[pb.id] = 1.0
       }
       distances[pa.id] = destMap
       pheromones[pa.id] = pheromoneMap
@@ -52,6 +56,7 @@ class AntColony(
   override suspend fun compute(): Delivery {
     var bestPath: Path? = null
     var bestCycle = 0
+    var convergence = 0
     for (cycle in 1..cycleLimit) {
       println("Cycle $cycle")
 
@@ -63,6 +68,8 @@ class AntColony(
           }
         }
       }
+
+      var lastBestCycle = this.bestCycle
 
       // Ants start scouting
       for (ant in ants) {
@@ -77,10 +84,17 @@ class AntColony(
         }
       }
 
+      if (lastBestCycle == this.bestCycle) convergence++
+      else convergence = 0
+
       // println("Best Path ${bestCycle}/${cycle}: ${bestPath?.sugar}")
       report(cycle, bestPath?.sugar ?: 0.0)
       progress(cycle.toFloat() / cycleLimit.toFloat())
       // delay(10)
+      if (convergence >= cycleConvergence) {
+        println("CONVERGE! at cycle: ${this.bestCycle}")
+        break
+      }
     }
 
     val delivery = Delivery(

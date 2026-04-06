@@ -1,9 +1,9 @@
-package ap.mobile.composablemap
+package ap.mobile.composablemap.model
 
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.LatLng
 
-data class Parcel (
+data class ParcelMapItem (
   val id: Int,
   val lat: Double = 0.0,
   val lng: Double = 0.0,

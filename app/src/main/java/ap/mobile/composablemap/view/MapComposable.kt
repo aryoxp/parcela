@@ -1,7 +1,8 @@
-package ap.mobile.composablemap.ui
+package ap.mobile.composablemap.view
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,12 +28,10 @@ import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.Button
-import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -42,12 +41,12 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -57,18 +56,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ap.mobile.composablemap.MainActivity.Nav
-import ap.mobile.composablemap.MyClusterRenderer
-import ap.mobile.composablemap.Parcel
-import ap.mobile.composablemap.ParcelItem
-import ap.mobile.composablemap.ui.icons.ParcelaIcons
-import ap.mobile.composablemap.ui.theme.doublePulseEffect
+import ap.mobile.composablemap.R
+import ap.mobile.composablemap.model.ParcelMapItem
+import ap.mobile.composablemap.model.Parcel
+import ap.mobile.composablemap.view.icons.ParcelaIcons
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
@@ -77,16 +75,13 @@ import com.google.android.gms.maps.model.StrokeStyle
 import com.google.android.gms.maps.model.StyleSpan
 import com.google.maps.android.clustering.Cluster
 import com.google.maps.android.clustering.algo.NonHierarchicalDistanceBasedAlgorithm
-import com.google.maps.android.clustering.view.ClusterRenderer
 import com.google.maps.android.compose.GoogleMap
-import com.google.maps.android.compose.MapEffect
 import com.google.maps.android.compose.MapsComposeExperimentalApi
 import com.google.maps.android.compose.Polyline
 import com.google.maps.android.compose.clustering.Clustering
 import com.google.maps.android.compose.clustering.rememberClusterManager
 import com.google.maps.android.compose.clustering.rememberClusterRenderer
 import com.google.maps.android.compose.rememberCameraPositionState
-import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.launch
 import kotlin.math.ceil
 
@@ -96,7 +91,8 @@ fun AppBar(onNavigateBack: () -> Unit, onNavigate: (Nav) -> Unit) {
   val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
   var menuExpanded by remember { mutableStateOf(false) }
   var showAboutDialog by remember { mutableStateOf(false) }
-  CenterAlignedTopAppBar(
+
+  TopAppBar(
     colors = TopAppBarDefaults.topAppBarColors(
       containerColor = MaterialTheme.colorScheme.primaryContainer,
       titleContentColor = MaterialTheme.colorScheme.primary,
@@ -182,10 +178,14 @@ fun AppBar(onNavigateBack: () -> Unit, onNavigate: (Nav) -> Unit) {
       }
       if (showAboutDialog) {
         AlertDialog(
-          onDismissRequest = {
-            showAboutDialog = false // vm.confirmExit(false)
-          },
-          icon = { Icon(ParcelaIcons.BoxSeam, contentDescription = null) },
+          onDismissRequest = { showAboutDialog = false },
+          icon = {
+            Image(
+              painter = painterResource(id = R.drawable.logo),
+              contentDescription = "Parcela",
+              modifier = Modifier
+            )
+                 },
           title = { Text("Parcela") },
           text = {
             Column(
@@ -201,12 +201,8 @@ fun AppBar(onNavigateBack: () -> Unit, onNavigate: (Nav) -> Unit) {
           modifier = Modifier,
           confirmButton = {
             TextButton(
-              onClick = {
-                showAboutDialog = false
-              }
-            ) {
-              Text("OK")
-            }
+              onClick = { showAboutDialog = false }
+            ) { Text("OK") }
           }
         )
       }
@@ -231,7 +227,7 @@ fun BottomNavigationBar(tabIndex: Int, onNavigate: (Int) -> Unit) {
           },
           icon = {
             Icon(
-              ParcelaIcons.Explore,
+              imageVector = ParcelaIcons.Explore,
               tint = MaterialTheme.colorScheme.primary,
               contentDescription = "Localized description"
             )
@@ -243,7 +239,7 @@ fun BottomNavigationBar(tabIndex: Int, onNavigate: (Int) -> Unit) {
           text = { Text(text = "Parcel", textAlign = TextAlign.Center) },
           icon = {
             Icon(
-              ParcelaIcons.BoxSeam,
+              imageVector = ParcelaIcons.BoxSeam,
               tint = MaterialTheme.colorScheme.primary,
               contentDescription = "Localized description"
             )
@@ -255,7 +251,7 @@ fun BottomNavigationBar(tabIndex: Int, onNavigate: (Int) -> Unit) {
           text = { Text(text = "Delivery", textAlign = TextAlign.Center) },
           icon = {
             Icon(
-              ParcelaIcons.Truck,
+              imageVector = ParcelaIcons.Truck,
               tint = MaterialTheme.colorScheme.primary,
               contentDescription = "Localized description"
             )
@@ -267,35 +263,16 @@ fun BottomNavigationBar(tabIndex: Int, onNavigate: (Int) -> Unit) {
 }
 
 @Composable
-fun ExitDialog(onDismiss: () -> Unit, onConfirmExit: (Boolean) -> Unit) {
-  AlertDialog(
-    onDismissRequest = onDismiss,
-    title = { Text("Exit App") },
-    text = { Text("Do you want to exit?") },
-    dismissButton = {
-      TextButton(onClick = onDismiss) {
-        Text("Cancel")
-      }
-    },
-    confirmButton = {
-      TextButton(onClick = { onConfirmExit(true) }) {
-        Text("Exit")
-      }
-    }
-  )
-}
-
-@Composable
 @OptIn(ExperimentalMaterial3Api::class)
 fun BottomSheet(
   showBottomSheet: Boolean,
   isComputing: Boolean,
-  parcel: Parcel,
-  parcels: List<Parcel> = listOf<Parcel>(),
+  parcel: ParcelMapItem,
+  parcels: List<ParcelMapItem> = listOf(),
   deliveryDistance: Float = 0f,
   deliveryDuration: Float = 0f,
   onDismiss: () -> Unit = {},
-  onGetDeliveryRecommendation: (Parcel) -> Unit = {}
+  onGetDeliveryRecommendation: (ParcelMapItem) -> Unit = {}
 ) {
   val sheetState = rememberModalBottomSheetState()
   val scope = rememberCoroutineScope()
@@ -407,20 +384,19 @@ fun BottomSheet(
   }
 }
 
-@OptIn(MapsComposeExperimentalApi::class)
 @Composable
 fun DeliveryMap(modifier: Modifier = Modifier,
-                parcels: List<Parcel> = listOf<Parcel>(),
-                deliveryRoute: List<LatLng> = listOf<LatLng>(),
+                parcels: List<ParcelMapItem> = listOf(),
+                deliveryRoute: List<LatLng> = listOf(),
                 currentPosition: LatLng = LatLng(0.0, 0.0),
                 zoom: Float = 13f,
-                onSelectParcel: (Parcel) -> Unit = {},
+                onSelectParcel: (ParcelMapItem) -> Unit = {},
                 onCheckLocationPermission: () -> Unit = {}
                 ) {
 
   val cameraPositionState = rememberCameraPositionState()
   val coroutineScope = rememberCoroutineScope()
-  var parcelItems by remember { mutableStateOf(listOf<ParcelItem>()) }
+  var parcelItems by remember { mutableStateOf(listOf<Parcel>()) }
   val boundsBuilder = LatLngBounds.builder()
 
   Column(modifier = modifier) {
@@ -429,10 +405,10 @@ fun DeliveryMap(modifier: Modifier = Modifier,
       cameraPositionState = cameraPositionState,
       onMapLoaded = {
         if (parcels.isNotEmpty()) {
-          val items = mutableListOf<ParcelItem>()
+          val items = mutableListOf<Parcel>()
           for (parcel in parcels) {
             boundsBuilder.include(parcel.position)
-            items.add(ParcelItem(parcel))
+            items.add(Parcel(parcel))
           }
           parcelItems += items
         }
@@ -458,7 +434,7 @@ fun DeliveryMap(modifier: Modifier = Modifier,
               true -> {
                 if (item.getParcel().id != it.getParcel().id) {
                   parcelItems -= item
-                  parcelItems += ParcelItem(item.getParcel()).select(false)
+                  parcelItems += Parcel(item.getParcel()).select(false)
                 }
               }
               else -> {}
@@ -467,7 +443,7 @@ fun DeliveryMap(modifier: Modifier = Modifier,
           if (!it.isSelected) {
             it.isSelected = true
             parcelItems -= it
-            parcelItems += ParcelItem(it.getParcel()).select()
+            parcelItems += Parcel(it.getParcel()).select()
             coroutineScope.launch {
               cameraPositionState.animate(
                 update = CameraUpdateFactory.newLatLng(it.position),
@@ -581,17 +557,17 @@ fun DeliveryMap(modifier: Modifier = Modifier,
   }
 }
 
-@OptIn(MapsComposeExperimentalApi::class, ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(MapsComposeExperimentalApi::class)
 @Composable
 private fun MyCustomRendererClustering(
-  items : List<ParcelItem>,
-  onClusterItemClick: (parcelItem: ParcelItem) -> Unit,
-  onClusterClick: (cluster: Cluster<ParcelItem>) -> Unit
+  items : List<Parcel>,
+  onClusterItemClick: (parcelItem: Parcel) -> Unit,
+  onClusterClick: (cluster: Cluster<Parcel>) -> Unit
 ) {
   // val configuration = LocalConfiguration.current
   // val screenHeight = configuration.screenHeightDp.dp
   // val screenWidth = configuration.screenWidthDp.dp
-  val clusterManager = rememberClusterManager<ParcelItem>()
+  val clusterManager = rememberClusterManager<Parcel>()
 
   clusterManager?.markerManager?.Collection()?.markers?.map { marker ->
     marker.setAnchor(0.5f, 0.5f)
@@ -603,7 +579,7 @@ private fun MyCustomRendererClustering(
   //   screenWidth.value.toInt(),
   //   screenHeight.value.toInt()
   // )
-  clusterManager?.algorithm = NonHierarchicalDistanceBasedAlgorithm<ParcelItem>().apply {
+  clusterManager?.algorithm = NonHierarchicalDistanceBasedAlgorithm<Parcel>().apply {
     maxDistanceBetweenClusteredItems = 100
   }
 

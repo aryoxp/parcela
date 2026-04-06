@@ -1,20 +1,19 @@
 package ap.mobile.composablemap.abc
 
 import ap.mobile.composablemap.optimizer.IOptimizer
-import ap.mobile.composablemap.Parcel
+import ap.mobile.composablemap.model.ParcelMapItem
 import ap.mobile.composablemap.optimizer.Delivery
-import kotlinx.coroutines.delay
 import java.util.TreeMap
 
 class BeeColony (
-  val parcels: List<Parcel>,
+  val parcels: List<ParcelMapItem>,
   numForager: Int = 5,
   numOnlooker: Int = 5,
   val forageLimit: Int = 50,
   val cycleLimit: Int = 30,
   val progress: (progress: Float) -> Unit,
   val report: (cycle: Int, fitness: Double) -> Unit,
-  val startAtParcel: Parcel? = null,
+  val startAtParcel: ParcelMapItem? = null,
 ) : IOptimizer {
   private val bees = mutableListOf<Bee>()
   // private val foods = mutableSetOf<Food>()

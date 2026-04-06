@@ -1,16 +1,21 @@
-package ap.mobile.composablemap
+package ap.mobile.composablemap.viewmodel
 
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import ap.mobile.composablemap.PreferenceRepository.ListPreference
+import ap.mobile.composablemap.repository.PreferenceRepository
+import ap.mobile.composablemap.repository.PreferenceState
+import ap.mobile.composablemap.repository.PreferencesKeys
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-class SettingsViewModel (context: Context, val preferenceRepository: PreferenceRepository = PreferenceRepository(context)) : ViewModel() {
+class SettingsViewModel (context: Context, val preferenceRepository: PreferenceRepository = PreferenceRepository(
+  context
+)
+) : ViewModel() {
 
   private val _settingsUiState = MutableStateFlow<SettingsUIState>(SettingsUIState())
   val settingsUiState: StateFlow<SettingsUIState> = _settingsUiState.asStateFlow()
@@ -30,6 +35,7 @@ class SettingsViewModel (context: Context, val preferenceRepository: PreferenceR
         optMethodFriendlyValue = preferenceRepository.getPreference(PreferencesKeys.OPT_METHOD)?.toDataState()?.friendlyValue ?: "",
         useOnlineApiFriendlyValue = preferenceRepository.getPreference(PreferencesKeys.USE_API)?.toDataState()?.friendlyValue ?: "",
         logFileFriendlyValue = preferenceRepository.getPreference(PreferencesKeys.LOG_FILE)?.toDataState()?.friendlyValue ?: "",
+        useHeuristicValue = preferenceRepository.getPreference(PreferencesKeys.HEURISTIC_INIT)?.toDataState()?.friendlyValue ?: "",
       )
     }
   }
@@ -37,7 +43,7 @@ class SettingsViewModel (context: Context, val preferenceRepository: PreferenceR
   fun setPreference(key: String) {
     viewModelScope.launch {
       val pref = preferenceRepository.getPreference(key)
-      if (pref is ListPreference) {
+      if (pref is PreferenceRepository.ListPreference) {
         _settingsUiState.update { currentState ->
           val currentPref = currentState.preference
           currentState.copy(
@@ -58,7 +64,7 @@ class SettingsViewModel (context: Context, val preferenceRepository: PreferenceR
 
   fun clearPreference() {
     _settingsUiState.update { currentState ->
-      currentState.copy(preference = PreferenceState() )
+      currentState.copy(preference = PreferenceState())
     }
   }
 

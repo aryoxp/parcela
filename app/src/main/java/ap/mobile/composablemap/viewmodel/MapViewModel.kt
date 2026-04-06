@@ -1,20 +1,29 @@
-package ap.mobile.composablemap
+package ap.mobile.composablemap.viewmodel
 
+import android.Manifest
+import android.app.Application
 import android.content.Context
 import android.content.pm.PackageManager
 import android.location.Location
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import ap.mobile.composablemap.model.ParcelMapItem
+import ap.mobile.composablemap.repository.ParcelRepository
+import ap.mobile.composablemap.repository.PreferenceRepository
+import ap.mobile.composablemap.repository.PreferencesKeys
+import ap.mobile.composablemap.repository.Result
 import ap.mobile.composablemap.optimizer.Delivery
+import ap.mobile.composablemap.optimizer.Optimizer
 import com.google.android.gms.location.FusedLocationProviderClient
-import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.Priority
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.tasks.CancellationToken
 import com.google.android.gms.tasks.CancellationTokenSource
 import com.google.android.gms.tasks.OnTokenCanceledListener
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,8 +31,9 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
-class MapViewModel(val context: Context) : ViewModel() {
+class MapViewModel(app: Application) : AndroidViewModel(app) {
 
+  private val context = getApplication<Application>().applicationContext
   private val parcelRepository: ParcelRepository = ParcelRepository(context = context)
 
   private val _mapUiState = MutableStateFlow(MapUiState())
@@ -32,8 +42,8 @@ class MapViewModel(val context: Context) : ViewModel() {
   private val _deliveryUiState = MutableStateFlow(DeliveryUiState())
   val deliveryUiState: StateFlow<DeliveryUiState> = _deliveryUiState.asStateFlow()
 
-  private val _parcelState = MutableStateFlow(ParcelState())
-  val parcelState: StateFlow<ParcelState> = _parcelState.asStateFlow()
+  private val _parcelState = MutableStateFlow(ParcelUIState())
+  val parcelState: StateFlow<ParcelUIState> = _parcelState.asStateFlow()
 
   init {
     getParcels()
@@ -52,7 +62,7 @@ class MapViewModel(val context: Context) : ViewModel() {
   fun fetchUserLocation(context: Context, fusedLocationClient: FusedLocationProviderClient) {
     // Check if the location permission is granted
     if (ContextCompat.checkSelfPermission(context,
-        android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+        Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
       try {
         // Fetch the last known location
         // fusedLocationClient.lastLocation.addOnSuccessListener { location ->
@@ -62,7 +72,8 @@ class MapViewModel(val context: Context) : ViewModel() {
         //    _userLocation.value = userLatLng
         //   }
         // }
-        fusedLocationClient.getCurrentLocation(LocationRequest.PRIORITY_HIGH_ACCURACY,
+        fusedLocationClient.getCurrentLocation(
+          Priority.PRIORITY_HIGH_ACCURACY,
           object : CancellationToken() {
           override fun onCanceledRequested(p0: OnTokenCanceledListener) =
             CancellationTokenSource().token
@@ -73,10 +84,10 @@ class MapViewModel(val context: Context) : ViewModel() {
               moveToLocation(LatLng(location.latitude, location.longitude))
           }
       } catch (e: SecurityException) {
-        Timber.e("Permission for location access was revoked: ${e.localizedMessage}")
+        Timber.Forest.e("Permission for location access was revoked: ${e.localizedMessage}")
       }
     } else {
-      Timber.e("Location permission is not granted.")
+      Timber.Forest.e("Location permission is not granted.")
     }
   }
 
@@ -93,6 +104,7 @@ class MapViewModel(val context: Context) : ViewModel() {
   }
 
   fun getParcels() {
+    // val context = getApplication<Application>().applicationContext
     viewModelScope.launch {
       val parcels = ParcelRepository(context = context).getAllParcels()
       _parcelState.update { currentState ->
@@ -108,7 +120,7 @@ class MapViewModel(val context: Context) : ViewModel() {
   }
 
   @RequiresApi(Build.VERSION_CODES.Q)
-  fun getDeliveryRecommendation(context: Context, parcel: Parcel? = null) {
+  fun getDeliveryRecommendation(context: Context, parcel: ParcelMapItem? = null) {
     _deliveryUiState.update { currentState ->
       currentState.copy(isComputing = true) }
     _parcelState.update { currentState ->
@@ -117,15 +129,15 @@ class MapViewModel(val context: Context) : ViewModel() {
 
     val preferenceRepository : PreferenceRepository = PreferenceRepository(context)
 
-    viewModelScope.launch {
+    viewModelScope.launch(Dispatchers.IO) {
       val result = parcelRepository.computeDelivery(
         ::setProgress,
         parcel,
-        optimizer = preferenceRepository.getString(PreferencesKeys.OPTIMIZER).toString()
+        optimizer = Optimizer.valueOf(preferenceRepository.getString(PreferencesKeys.OPTIMIZER).toString()),
+        useHeuristicInit = preferenceRepository.getBoolean(PreferencesKeys.HEURISTIC_INIT)
       )
       when (result) {
         is Result.Success<Delivery> -> {
-
           _deliveryUiState.update { currentState ->
             currentState.copy(
               deliveryRoute = result.data.parcels,
@@ -162,7 +174,7 @@ class MapViewModel(val context: Context) : ViewModel() {
     return progress
   }
 
-  fun selectParcel(parcel: Parcel) {
+  fun selectParcel(parcel: ParcelMapItem?) {
     // _mapUiState.update { currentState ->
     //   val parcels = currentState.parcels.toMutableList<Parcel>()
     //   for(p in parcels) {
@@ -173,7 +185,7 @@ class MapViewModel(val context: Context) : ViewModel() {
     // }
     _parcelState.update { currentState ->
       currentState.copy(
-        parcel = parcel
+        parcel = parcel?: ParcelMapItem(0)
       )
     }
   }

@@ -1,21 +1,17 @@
-package ap.mobile.composablemap
+package ap.mobile.composablemap.repository
 
 import android.content.Context
 import android.os.Build
 import androidx.annotation.RequiresApi
 import ap.mobile.composablemap.abc.BeeColony
 import ap.mobile.composablemap.aco.AntColony
+import ap.mobile.composablemap.model.ParcelMapItem
 import ap.mobile.composablemap.optimizer.Delivery
-import ap.mobile.composablemap.optimizer.IOptimizer
-import ap.mobile.composablemap.optimizer.Logger
-import ap.mobile.composablemap.optimizer.Logger.saveFile
+import ap.mobile.composablemap.optimizer.Optimizer
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import java.lang.Thread.sleep
-import kotlin.concurrent.thread
 import kotlin.system.measureTimeMillis
 
 sealed class Result<out R> {
@@ -24,8 +20,8 @@ sealed class Result<out R> {
 }
 
 class ParcelRepository(val context: Context) {
-  private val parcels = mutableListOf<Parcel>()
-  private var optimizer = "ACO"
+  private val parcels = mutableListOf<ParcelMapItem>()
+  private var optimizer = Optimizer.ACO
 
   init {
     // Pre-populate the repository with some sample data
@@ -41,7 +37,7 @@ class ParcelRepository(val context: Context) {
     // parcels.add(Parcel(10, name = "user10", address = "user10@example.com"))
 
     parcels.add(
-      Parcel(
+      ParcelMapItem(
         1,
         lat = -8.01815,
         lng = 112.62943,
@@ -51,7 +47,7 @@ class ParcelRepository(val context: Context) {
       )
     )
     parcels.add(
-      Parcel(
+      ParcelMapItem(
         2,
         lat = -8.01895,
         lng = 112.62941,
@@ -61,7 +57,7 @@ class ParcelRepository(val context: Context) {
       )
     )
     parcels.add(
-      Parcel(
+      ParcelMapItem(
         3,
         lat = -8.01896,
         lng = 112.63076,
@@ -71,7 +67,7 @@ class ParcelRepository(val context: Context) {
       )
     )
     parcels.add(
-      Parcel(
+      ParcelMapItem(
         4,
         lat = -8.01905,
         lng = 112.63071,
@@ -81,7 +77,7 @@ class ParcelRepository(val context: Context) {
       )
     )
     parcels.add(
-      Parcel(
+      ParcelMapItem(
         5,
         lat = -8.01966,
         lng = 112.63113,
@@ -91,7 +87,7 @@ class ParcelRepository(val context: Context) {
       )
     )
     parcels.add(
-      Parcel(
+      ParcelMapItem(
         6,
         lat = -8.02048,
         lng = 112.63174,
@@ -101,7 +97,7 @@ class ParcelRepository(val context: Context) {
       )
     )
     parcels.add(
-      Parcel(
+      ParcelMapItem(
         7,
         lat = -8.0186,
         lng = 112.63117,
@@ -111,7 +107,7 @@ class ParcelRepository(val context: Context) {
       )
     )
     parcels.add(
-      Parcel(
+      ParcelMapItem(
         8,
         lat = -8.01845,
         lng = 112.63118,
@@ -121,7 +117,7 @@ class ParcelRepository(val context: Context) {
       )
     )
     parcels.add(
-      Parcel(
+      ParcelMapItem(
         9,
         lat = -8.01747,
         lng = 112.62969,
@@ -131,7 +127,7 @@ class ParcelRepository(val context: Context) {
       )
     )
     parcels.add(
-      Parcel(
+      ParcelMapItem(
         10,
         lat = -8.01732,
         lng = 112.63092,
@@ -141,7 +137,7 @@ class ParcelRepository(val context: Context) {
       )
     )
     parcels.add(
-      Parcel(
+      ParcelMapItem(
         11,
         lat = -8.01756,
         lng = 112.63124,
@@ -151,7 +147,7 @@ class ParcelRepository(val context: Context) {
       )
     )
     parcels.add(
-      Parcel(
+      ParcelMapItem(
         12,
         lat = -8.01705,
         lng = 112.62949,
@@ -161,7 +157,7 @@ class ParcelRepository(val context: Context) {
       )
     )
     parcels.add(
-      Parcel(
+      ParcelMapItem(
         13,
         lat = -8.01677,
         lng = 112.62984,
@@ -171,7 +167,7 @@ class ParcelRepository(val context: Context) {
       )
     )
     parcels.add(
-      Parcel(
+      ParcelMapItem(
         14,
         lat = -8.01632,
         lng = 112.62974,
@@ -181,7 +177,7 @@ class ParcelRepository(val context: Context) {
       )
     )
     parcels.add(
-      Parcel(
+      ParcelMapItem(
         15,
         lat = -8.01591,
         lng = 112.63015,
@@ -191,7 +187,7 @@ class ParcelRepository(val context: Context) {
       )
     )
     parcels.add(
-      Parcel(
+      ParcelMapItem(
         16,
         lat = -8.0148,
         lng = 112.63011,
@@ -201,7 +197,7 @@ class ParcelRepository(val context: Context) {
       )
     )
     parcels.add(
-      Parcel(
+      ParcelMapItem(
         17,
         lat = -8.015,
         lng = 112.6305,
@@ -211,7 +207,7 @@ class ParcelRepository(val context: Context) {
       )
     )
     parcels.add(
-      Parcel(
+      ParcelMapItem(
         18,
         lat = -8.01419,
         lng = 112.62993,
@@ -221,7 +217,7 @@ class ParcelRepository(val context: Context) {
       )
     )
     parcels.add(
-      Parcel(
+      ParcelMapItem(
         19,
         lat = -8.01384,
         lng = 112.62976,
@@ -231,7 +227,7 @@ class ParcelRepository(val context: Context) {
       )
     )
     parcels.add(
-      Parcel(
+      ParcelMapItem(
         20,
         lat = -8.01385,
         lng = 112.62981,
@@ -241,7 +237,7 @@ class ParcelRepository(val context: Context) {
       )
     )
     parcels.add(
-      Parcel(
+      ParcelMapItem(
         21,
         lat = -8.01385,
         lng = 112.63029,
@@ -251,7 +247,7 @@ class ParcelRepository(val context: Context) {
       )
     )
     parcels.add(
-      Parcel(
+      ParcelMapItem(
         22,
         lat = -8.01356,
         lng = 112.63035,
@@ -261,7 +257,7 @@ class ParcelRepository(val context: Context) {
       )
     )
     parcels.add(
-      Parcel(
+      ParcelMapItem(
         23,
         lat = -8.01304,
         lng = 112.63045,
@@ -271,7 +267,7 @@ class ParcelRepository(val context: Context) {
       )
     )
     parcels.add(
-      Parcel(
+      ParcelMapItem(
         24,
         lat = -8.01271,
         lng = 112.63007,
@@ -281,7 +277,7 @@ class ParcelRepository(val context: Context) {
       )
     )
     parcels.add(
-      Parcel(
+      ParcelMapItem(
         25,
         lat = -8.01505,
         lng = 112.63004,
@@ -291,7 +287,7 @@ class ParcelRepository(val context: Context) {
       )
     )
     parcels.add(
-      Parcel(
+      ParcelMapItem(
         26,
         lat = -8.01701,
         lng = 112.62846,
@@ -301,7 +297,7 @@ class ParcelRepository(val context: Context) {
       )
     )
     parcels.add(
-      Parcel(
+      ParcelMapItem(
         27,
         lat = -8.02218,
         lng = 112.62878,
@@ -311,7 +307,7 @@ class ParcelRepository(val context: Context) {
       )
     )
     parcels.add(
-      Parcel(
+      ParcelMapItem(
         28,
         lat = -8.02255,
         lng = 112.63005,
@@ -321,7 +317,7 @@ class ParcelRepository(val context: Context) {
       )
     )
     parcels.add(
-      Parcel(
+      ParcelMapItem(
         29,
         lat = -8.02289,
         lng = 112.63026,
@@ -331,7 +327,7 @@ class ParcelRepository(val context: Context) {
       )
     )
     parcels.add(
-      Parcel(
+      ParcelMapItem(
         30,
         lat = -8.02334,
         lng = 112.63014,
@@ -343,54 +339,59 @@ class ParcelRepository(val context: Context) {
 
   }
 
-  fun getAllParcels(): List<Parcel> {
+  fun getAllParcels(): List<ParcelMapItem> {
     return parcels.toList()
   }
 
   @RequiresApi(Build.VERSION_CODES.Q)
   private fun report(cycle: Int, fitness: Double) {
-    saveFile(
-      context = context,
-      path = "Download/data",
-      fileName = "aco.csv".takeIf { this.optimizer == "ACO" } ?: "abc.csv",
-      mode = "wa",
-      content = "$cycle,$fitness\n",
-    )
+    // saveFile(
+    //   context = context,
+    //   path = "Download/data",
+    //   fileName = "aco.csv".takeIf { this.optimizer == "ACO" } ?: "abc.csv",
+    //   mode = "wa",
+    //   content = "$cycle,$fitness\n",
+    // )
   }
 
   @RequiresApi(Build.VERSION_CODES.Q)
   suspend fun computeDelivery(
     progress: (Float) -> Unit,
-    parcel: Parcel?,
-    optimizer: String = "ACO",
+    parcel: ParcelMapItem?,
+    optimizer: Optimizer,
+    useHeuristicInit: Boolean? = false
   ): Result<Delivery> {
     this.optimizer = optimizer
     return withContext(Dispatchers.IO) {
-      var delivery = Delivery(emptyList(), 0.0f, 0.0f)
-      for (i in 1..10) {
+      var delivery = Delivery(listOf(), 0f, 0f)
+      for (i in 1..1) {
         // thread(start = true) {
           print("Sample $i\n")
-          var opt: IOptimizer = if (optimizer.equals("ABC", ignoreCase = true)) {
-            BeeColony(parcels, progress = progress, report = ::report, startAtParcel = parcel)
-          } else AntColony(parcels, progress = progress, report = ::report, startAtParcel = parcel)
+          val opt = when (optimizer) {
+            Optimizer.ACO ->
+              AntColony(parcels, progress = progress, report = ::report, startAtParcel = parcel, useHeuristicInit = useHeuristicInit)
+            Optimizer.ABC ->
+              BeeColony(parcels, progress = progress, report = ::report, startAtParcel = parcel)
+          }
           val elapsed = measureTimeMillis {
-            runBlocking(Dispatchers.IO) {
+            // runBlocking(Dispatchers.IO) {
               delivery = opt.compute()
-            }
+            // }
           }
           // println("Elapsed time: $elapsed, Best cycle: ${opt.bestCycle}")
-          saveFile(
-            context = context,
-            path = "Download/data",
-            fileName = "aco-perf.csv".takeIf { optimizer == "ACO" } ?: "abc-perf.csv",
-            mode = "wa",
-            content = "$elapsed,${opt.bestCycle},${opt.fitness}\n",
-          )
-          println("$elapsed,${opt.bestCycle},${opt.fitness}\n")
+          // saveFile(
+          //   context = context,
+          //   path = "Download/data",
+          //   fileName = "aco-perf.csv".takeIf { optimizer == "ACO" } ?: "abc-perf.csv",
+          //   mode = "wa",
+          //   content = "$elapsed,${opt.bestCycle},${opt.fitness}\n",
+          // )
+          println("$elapsed ms, at cycle: ${opt.bestCycle}, fitness:${opt.fitness}\n")
           System.gc()
           sleep(100)
         // }
       }
+      if (delivery.distance == 0f) Result.Error(Exception("Invalid result."))
       Result.Success(delivery)
     }
   }

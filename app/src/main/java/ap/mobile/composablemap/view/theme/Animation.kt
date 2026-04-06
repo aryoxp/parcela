@@ -1,4 +1,4 @@
-package ap.mobile.composablemap.ui.theme
+package ap.mobile.composablemap.view.theme
 
 import androidx.compose.animation.core.DurationBasedAnimationSpec
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -18,7 +18,6 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.graphics.drawscope.scale
-import kotlinx.coroutines.time.delay
 
 @Composable
 fun Modifier.doublePulseEffect(

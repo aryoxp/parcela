@@ -1,15 +1,15 @@
 package ap.mobile.composablemap.aco
 
-import ap.mobile.composablemap.Parcel
+import ap.mobile.composablemap.model.ParcelMapItem
 import kotlin.math.pow
 import kotlin.math.sqrt
 
 class Path (
   val parcelIds: List<Int>,
-  parcels: List<Parcel> = listOf<Parcel>()
+  parcels: List<ParcelMapItem> = listOf<ParcelMapItem>()
 ) {
 
-  val route : MutableList<Parcel> = mutableListOf<Parcel>()
+  val route : MutableList<ParcelMapItem> = mutableListOf<ParcelMapItem>()
   var sugar = 0.0
 
   init {
@@ -20,7 +20,7 @@ class Path (
     computeSugar(route)
   }
 
-  private fun computeSugar(parcels: List<Parcel>): Double {
+  private fun computeSugar(parcels: List<ParcelMapItem>): Double {
     var distance = 0.0
     for (i in 1..(parcels.size-1)) {
       val d = distance(parcels[i], parcels[i - 1])
@@ -33,14 +33,14 @@ class Path (
   fun leaveTrail(pheromones: MutableMap<Int, MutableMap<Int, Double>>) : Path {
     val trailPheromone = 1 / sugar
     for (i in 0..parcelIds.size - 2) {
-      var level = pheromones[parcelIds[i]]?.get(parcelIds[i+1]) ?: 1.0
+      val level = pheromones[parcelIds[i]]?.get(parcelIds[i+1]) ?: 1.0
       pheromones[parcelIds[i]]?.set(parcelIds[i+1], level + trailPheromone)
     }
     return this
   }
 
 
-  fun getParcels() : List<Parcel> {
+  fun getParcels() : List<ParcelMapItem> {
     return route
   }
 
@@ -55,7 +55,7 @@ class Path (
   }
 
   companion object {
-    fun distance(parcel1: Parcel, parcel2: Parcel): Double {
+    fun distance(parcel1: ParcelMapItem, parcel2: ParcelMapItem): Double {
       val distance = sqrt((parcel1.lat - parcel2.lat).pow(2) + (parcel1.lng - parcel2.lng).pow(2))
       return distance
     }

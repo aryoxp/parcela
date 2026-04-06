@@ -1,13 +1,13 @@
 package ap.mobile.composablemap.aco
 
-import ap.mobile.composablemap.Parcel
+import ap.mobile.composablemap.model.ParcelMapItem
 
-class Ant(val parcels: List<Parcel>,
+class Ant(val parcels: List<ParcelMapItem>,
           val distances: Map<Int, Map<Int, Double>>) {
 
   fun moves (
     pheromones: MutableMap<Int, MutableMap<Int, Double>>,
-    startAtParcel: Parcel?
+    startAtParcel: ParcelMapItem?
   ) : Path {
 
     var parcelDelivered = mutableListOf<Int>()

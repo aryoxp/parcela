@@ -1,4 +1,4 @@
-package ap.mobile.composablemap.ui
+package ap.mobile.composablemap.view
 
 import android.net.Uri
 import androidx.activity.result.ActivityResultLauncher
@@ -46,11 +46,11 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
-import ap.mobile.composablemap.PreferenceRepository.Preference.Type
-import ap.mobile.composablemap.PreferenceState
-import ap.mobile.composablemap.PreferencesKeys
+import ap.mobile.composablemap.repository.PreferenceRepository.Preference.Type
+import ap.mobile.composablemap.repository.PreferenceState
+import ap.mobile.composablemap.repository.PreferencesKeys
 import ap.mobile.composablemap.R
-import ap.mobile.composablemap.ui.icons.ParcelaIcons
+import ap.mobile.composablemap.view.icons.ParcelaIcons
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -186,6 +186,14 @@ fun SettingsScreenPreferenceList(
       value = categoryItems[PreferencesKeys.USE_API].toBoolean(), // useOnlineApi?.value.toBoolean(),
       onCheckedChange = {
         onUpdateSwitchPreference(PreferencesKeys.USE_API, it)
+      }
+    )
+    SwitchCategoryItem(
+      "Heuristic Pheromone Init",
+      ParcelaIcons.LooksOne,
+      value = categoryItems[PreferencesKeys.HEURISTIC_INIT].toBoolean(), // useOnlineApi?.value.toBoolean(),
+      onCheckedChange = {
+        onUpdateSwitchPreference(PreferencesKeys.HEURISTIC_INIT, it)
       }
     )
     CategoryItem(

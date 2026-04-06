@@ -1,6 +1,6 @@
 package ap.mobile.composablemap.abc
 
-import ap.mobile.composablemap.Parcel
+import ap.mobile.composablemap.model.ParcelMapItem
 
 class Bee(var type: Type, val forageLimit: Int = 5) {
 
@@ -38,7 +38,7 @@ class Bee(var type: Type, val forageLimit: Int = 5) {
     type = Type.SCOUT
   }
 
-  fun scout(parcels: List<Parcel>, startAtParcel: Parcel? = null): Food {
+  fun scout(parcels: List<ParcelMapItem>, startAtParcel: ParcelMapItem? = null): Food {
     return Food(parcels.shuffled().toMutableList(), startAtParcel)
   }
 

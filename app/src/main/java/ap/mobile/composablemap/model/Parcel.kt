@@ -1,10 +1,10 @@
-package ap.mobile.composablemap
+package ap.mobile.composablemap.model
 
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.clustering.ClusterItem
 
-class ParcelItem (
-  private var parcel: Parcel,
+class Parcel (
+  private var parcel: ParcelMapItem,
 ) : ClusterItem {
 
   private val position: LatLng = LatLng(parcel.lat, parcel.lng)
@@ -19,7 +19,7 @@ class ParcelItem (
     this.parcel = parcel
   }
 
-  fun select(selected: Boolean = true): ParcelItem {
+  fun select(selected: Boolean = true): Parcel {
     isSelected = selected
     return this
   }
@@ -36,11 +36,11 @@ class ParcelItem (
     return snippet
   }
 
-  override fun getZIndex(): Float? {
+  override fun getZIndex(): Float {
     return 0f
   }
 
-  fun getParcel() : Parcel {
+  fun getParcel() : ParcelMapItem {
     return parcel
   }
 

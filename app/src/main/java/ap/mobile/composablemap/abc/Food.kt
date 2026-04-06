@@ -1,16 +1,16 @@
 package ap.mobile.composablemap.abc
 
-import ap.mobile.composablemap.Parcel
+import ap.mobile.composablemap.model.ParcelMapItem
 import kotlin.math.pow
 import kotlin.math.sqrt
 
-class Food(private val parcels: MutableList<Parcel>, val startAtParcel: Parcel?) {
+class Food(private val parcels: MutableList<ParcelMapItem>, val startAtParcel: ParcelMapItem?) {
   var nectar = 0.0
 
   init {
     computeNectar()
     if (startAtParcel != null) {
-      val filtered: List<Parcel> = parcels.filterNot { it.id == startAtParcel.id }
+      val filtered: List<ParcelMapItem> = parcels.filterNot { it.id == startAtParcel.id }
       parcels.clear()
       parcels.add(startAtParcel)
       parcels.addAll(filtered)
@@ -23,7 +23,7 @@ class Food(private val parcels: MutableList<Parcel>, val startAtParcel: Parcel?)
     val index = (1..(parcels.size-1)).shuffled().first()
     val chainA = parcels.slice(0..(index-1))
     val chainB = parcels.slice(index..(parcels.size-1)).shuffled()
-    val newParcels: MutableList<Parcel> = mutableListOf()
+    val newParcels: MutableList<ParcelMapItem> = mutableListOf()
     newParcels.addAll(chainA + chainB)
     // print("After: ")
     val after = nectar(newParcels)
@@ -42,7 +42,7 @@ class Food(private val parcels: MutableList<Parcel>, val startAtParcel: Parcel?)
     // println(nectar)
     val index = (1..(parcels.size-2)).shuffled().first()
     val index2 = (2..(parcels.size-1)).shuffled().first()
-    val newParcels: MutableList<Parcel> = mutableListOf()
+    val newParcels: MutableList<ParcelMapItem> = mutableListOf()
     newParcels.addAll(parcels)
     val a = newParcels[index]
     val b = newParcels[index2]
@@ -73,7 +73,7 @@ class Food(private val parcels: MutableList<Parcel>, val startAtParcel: Parcel?)
     // println(nectar)
     val index = (1..(parcels.size-2)).shuffled().first()
     val index2 = (2..(parcels.size-1)).shuffled().first()
-    val newParcels: MutableList<Parcel> = mutableListOf()
+    val newParcels: MutableList<ParcelMapItem> = mutableListOf()
     newParcels.addAll(parcels)
     val a = newParcels[index]
     val b = newParcels[index2]
@@ -144,7 +144,7 @@ class Food(private val parcels: MutableList<Parcel>, val startAtParcel: Parcel?)
     return nectar
   }
 
-  fun getParcels() : List<Parcel> {
+  fun getParcels() : List<ParcelMapItem> {
     return this.parcels
   }
 
@@ -155,12 +155,12 @@ class Food(private val parcels: MutableList<Parcel>, val startAtParcel: Parcel?)
   }
 
   companion object {
-    fun distance(parcel1: Parcel, parcel2: Parcel): Double {
+    fun distance(parcel1: ParcelMapItem, parcel2: ParcelMapItem): Double {
       val distance = sqrt((parcel1.lat - parcel2.lat).pow(2) + (parcel1.lng - parcel2.lng).pow(2))
       return distance
     }
 
-    fun nectar(parcels: List<Parcel>): Double {
+    fun nectar(parcels: List<ParcelMapItem>): Double {
       var distance = 0.0
       for (i in 1..(parcels.size - 1)) {
         val d = distance(parcels[i], parcels[i - 1])

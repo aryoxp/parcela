@@ -17,18 +17,21 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.viewModels
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.TweenSpec
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
@@ -48,30 +51,33 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import ap.mobile.composablemap.model.ParcelMapItem
 import ap.mobile.composablemap.optimizer.Logger
-import ap.mobile.composablemap.ui.AppBar
-import ap.mobile.composablemap.ui.BottomNavigationBar
-import ap.mobile.composablemap.ui.BottomSheet
-import ap.mobile.composablemap.ui.DeliveryContent
-import ap.mobile.composablemap.ui.DeliveryMap
-import ap.mobile.composablemap.ui.ExitDialog
-import ap.mobile.composablemap.ui.ParcelDestination
-import ap.mobile.composablemap.ui.PreferenceDialog
-import ap.mobile.composablemap.ui.SettingsScreenPreferenceList
-import ap.mobile.composablemap.ui.SettingsScreenTopAppBar
+import ap.mobile.composablemap.repository.PreferencesKeys
+import ap.mobile.composablemap.view.AppBar
+import ap.mobile.composablemap.view.BottomNavigationBar
+import ap.mobile.composablemap.view.BottomSheet
+import ap.mobile.composablemap.view.DeliveryContent
+import ap.mobile.composablemap.view.DeliveryMap
+import ap.mobile.composablemap.view.ParcelDestination
+import ap.mobile.composablemap.view.PreferenceDialog
+import ap.mobile.composablemap.view.SettingsScreenPreferenceList
+import ap.mobile.composablemap.view.SettingsScreenTopAppBar
+import ap.mobile.composablemap.viewmodel.DeliveryUiState
+import ap.mobile.composablemap.viewmodel.MapUiState
+import ap.mobile.composablemap.viewmodel.MapViewModel
+import ap.mobile.composablemap.viewmodel.ParcelUIState
+import ap.mobile.composablemap.viewmodel.SettingsUIState
+import ap.mobile.composablemap.viewmodel.SettingsViewModel
+import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.google.maps.android.compose.MapsComposeExperimentalApi
-import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.serialization.Serializable
 import timber.log.Timber
 import java.net.URLDecoder
 
 
-@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
-
-  private val vm: MapViewModel = MapViewModel(this)
-
 
   sealed class Nav {
     @Serializable object Main : Nav()
@@ -89,12 +95,15 @@ class MainActivity : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     enableEdgeToEdge()
+    val vm = MapViewModel(this.application)
     val vmSettings = SettingsViewModel(findActivity())
+
+    // request permission for writing data to a file
     val request = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
       uri?.let {
         // call this to persist permission across device reboots
         contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-        var decoded = URLDecoder.decode(uri.toString(), "UTF-8")
+        val decoded = URLDecoder.decode(uri.toString(), "UTF-8")
         val path = decoded.substringAfterLast(":")
         vmSettings.updatePreference(PreferencesKeys.LOG_FILE, path)
         vmSettings.clearPreference()
@@ -103,22 +112,51 @@ class MainActivity : ComponentActivity() {
     }
     setContent {
       AppTheme(darkTheme = false, dynamicColor = false) {
-        MyScaffold(request, vmSettings)
+        val mapUiState by vm.mapUiState.collectAsState()
+        val deliveryUiState by vm.deliveryUiState.collectAsState()
+        val settingsUIState by vmSettings.settingsUiState.collectAsState()
+        val parcelState by vm.parcelState.collectAsState()
+        MyScaffold(
+          request, mapUiState,
+          fetchUserLocation = { vm.fetchUserLocation(this, it) },
+          selectParcel = {
+            vm.selectParcel(it)
+            vm.parcelSheet(it?.let { true } ?: false)
+          },
+          deliveryUiState = deliveryUiState,
+          settingsUiState = settingsUIState,
+          parcelUiState = parcelState,
+          getDeliveryRecommendation = { vm.getDeliveryRecommendation(this, it) },
+          updatePreference = { key, value -> vmSettings.updatePreference(key, value) },
+          setPreference = { vmSettings.setPreference(it) },
+          updateSwitchPreference = { key, value -> vmSettings.updateSwitchPreference(key, value) },
+          clearPreference = { vmSettings.clearPreference() }
+        )
       }
     }
   }
 
-  @OptIn(ExperimentalMaterial3Api::class)
   @Composable
-  fun MyScaffold(request: ActivityResultLauncher<Uri?>, vmSettings: SettingsViewModel) {
+  fun MyScaffold(
+    request: ActivityResultLauncher<Uri?>,
+    mapUiState: MapUiState,
+    parcelUiState: ParcelUIState,
+    deliveryUiState: DeliveryUiState,
+    settingsUiState: SettingsUIState,
+    fetchUserLocation: (FusedLocationProviderClient) -> Unit,
+    selectParcel: (ParcelMapItem?) -> Unit,
+    getDeliveryRecommendation: (ParcelMapItem?) -> Unit,
+    setPreference: (String) -> Unit,
+    updatePreference: (String, String) -> Unit = { _, _ -> },
+    updateSwitchPreference: (String, Boolean) -> Unit = { _, _ -> },
+    clearPreference: () -> Unit = {},
+    ) {
     val rootNavController: NavHostController = rememberNavController()
-    val settingsUiState by vmSettings.settingsUiState.collectAsState()
-    val fadeAnimationSpec = TweenSpec<Float>(500, easing = FastOutSlowInEasing)
-    val animationSpec = TweenSpec<IntOffset>(500, easing = FastOutSlowInEasing)
+    val animationSpec = TweenSpec<IntOffset>(300, easing = FastOutSlowInEasing)
+    val fadeAnimationSpec: FiniteAnimationSpec<Float> = TweenSpec(1000)
 
     val window = (LocalActivity.current as Activity).window
     val view = LocalView.current
-
 
     SideEffect {
       // force light mode for status bar items
@@ -154,18 +192,24 @@ class MainActivity : ComponentActivity() {
       }
     ) {
       composable<Nav.Main> {
-        MainScreen(
+        MapScreen(
           onNavigate = { rootNavController.navigate(it) },
-          onConfirmExit = { findActivity().finish() }
+          onConfirmExit = { findActivity().finish() },
+          mapUiState = mapUiState,
+          fetchUserLocation = { fetchUserLocation(it) },
+          selectParcel = { selectParcel(it) },
+          deliveryUiState = deliveryUiState,
+          parcelState = parcelUiState,
+          getDeliveryRecommendation = { getDeliveryRecommendation(it) }
         )
       }
       composable<Nav.Settings> {
         SettingsScreen(
           state = settingsUiState,
-          onSetPreference = { key -> vmSettings.setPreference(key) },
-          onClearPreference = { vmSettings.clearPreference() },
-          onUpdatePreference = { key, value -> vmSettings.updatePreference(key, value) },
-          onUpdateSwitchPreference = { key, value -> vmSettings.updateSwitchPreference(key, value) },
+          onSetPreference = { key -> setPreference(key) },
+          onClearPreference = { clearPreference() },
+          onUpdatePreference = { key, value -> updatePreference(key, value) },
+          onUpdateSwitchPreference = { key, value -> updateSwitchPreference(key, value) },
           onBackButtonClick = { rootNavController.popBackStack() },
           request = request
         )
@@ -174,16 +218,21 @@ class MainActivity : ComponentActivity() {
   }
 
   @Composable
-  fun MainScreen(
+  fun MapScreen(
     onNavigate: (Nav) -> Unit,
-    onConfirmExit: (Boolean) -> Unit
+    onConfirmExit: (Boolean) -> Unit,
+    mapUiState: MapUiState,
+    fetchUserLocation: (FusedLocationProviderClient) -> Unit,
+    selectParcel: (ParcelMapItem?) -> Unit,
+    deliveryUiState: DeliveryUiState,
+    parcelState: ParcelUIState,
+    getDeliveryRecommendation: (ParcelMapItem?) -> Unit
   ) {
     var tabIndex by remember { mutableIntStateOf(0) }
     var showExitDialog by remember { mutableStateOf(false) }
-    val mapUiState by vm.mapUiState.collectAsState()
     val mainNavController = rememberNavController()
-    val fadeAnimationSpec = TweenSpec<Float>(500, easing = FastOutSlowInEasing)
-    val animationSpec = TweenSpec<IntOffset>(500, easing = FastOutSlowInEasing)
+    val fadeAnimationSpec = TweenSpec<Float>(300, easing = FastOutSlowInEasing)
+    val animationSpec = TweenSpec<IntOffset>(300, easing = FastOutSlowInEasing)
 
     Scaffold(modifier = Modifier.fillMaxSize(),
       containerColor = MaterialTheme.colorScheme.surface,
@@ -193,7 +242,6 @@ class MainActivity : ComponentActivity() {
             showExitDialog = true
           } else {
             mainNavController.popBackStack()
-            tabIndex = 0
           }
         },
         onNavigate = { destination -> onNavigate(destination) }
@@ -255,38 +303,62 @@ class MainActivity : ComponentActivity() {
         }
         ) {
         composable<NavMain.Map> { // (route = MapScreen.Map.name) {
-          MapDestination(modifier = Modifier.padding(padding))
+          MapDestination(
+            modifier = Modifier.padding(padding),
+            mapUiState = mapUiState,
+            parcelState = parcelState,
+            fetchUserLocation = { fetchUserLocation(it) },
+            selectParcel = { selectParcel(it) },
+            deselectParcel = { selectParcel(null) },
+            getDeliveryRecommendation = { getDeliveryRecommendation(it) }
+          )
         }
         composable<NavMain.Parcel> { // (route = MapScreen.Parcel.name) {
           ParcelDestination(
             modifier = Modifier.padding(padding),
-            onBackHandler = {
-              mainNavController.popBackStack()
-              tabIndex = 0
-            },
+            onBackHandler = { mainNavController.popBackStack() },
             parcels = mapUiState.parcels
           )
         }
         composable<NavMain.Delivery> { // (route = MapScreen.Delivery.name) {
           DeliveryDestination(
-            modifier = Modifier.padding(padding), onBackHandler = {
-              mainNavController.popBackStack()
-              tabIndex = 0
-            })
+            modifier = Modifier.padding(padding),
+            onBackHandler = { mainNavController.popBackStack() },
+            uiState = deliveryUiState,
+            getDeliveryRecommendation = { getDeliveryRecommendation(null) }
+          )
         }
       }
     }
     if (showExitDialog) {
-      ExitDialog(onDismiss = { showExitDialog = false },
-        onConfirmExit = onConfirmExit)
+      AlertDialog(
+        onDismissRequest = { showExitDialog = !showExitDialog },
+        title = { Text("Exit App") },
+        text = { Text("Do you want to exit?") },
+        dismissButton = {
+          TextButton(onClick = { showExitDialog = !showExitDialog }) {
+            Text("Cancel")
+          }
+        },
+        confirmButton = {
+          TextButton(onClick = { onConfirmExit(true) }) {
+            Text("Exit")
+          }
+        }
+      )
     }
   }
 
   @OptIn(MapsComposeExperimentalApi::class, ExperimentalMaterial3Api::class)
   @Composable
-  fun MapDestination(modifier: Modifier = Modifier
+  fun MapDestination(modifier: Modifier = Modifier,
+                     mapUiState: MapUiState,
+                     parcelState: ParcelUIState,
+                     fetchUserLocation: (FusedLocationProviderClient) -> Unit,
+                     selectParcel: (ParcelMapItem?) -> Unit,
+                     deselectParcel: () -> Unit,
+                     getDeliveryRecommendation: (ParcelMapItem) -> Unit
   ) {
-    val mapUiState by vm.mapUiState.collectAsState()
     val context = LocalContext.current
 
     val fusedLocationClient = remember {
@@ -299,7 +371,7 @@ class MainActivity : ComponentActivity() {
     ) { isGranted ->
       if (isGranted) {
         // Fetch the user's location and update the camera if permission is granted
-        vm.fetchUserLocation(context, fusedLocationClient)
+        fetchUserLocation(fusedLocationClient)
       } else {
         // Handle the case when permission is denied
         Timber.e("Location permission was denied by the user.")
@@ -311,29 +383,20 @@ class MainActivity : ComponentActivity() {
       deliveryRoute = mapUiState.deliveryRoute,
       currentPosition = mapUiState.currentPosition,
       zoom = mapUiState.zoom,
-      onSelectParcel = { parcel: Parcel ->
-        vm.selectParcel(parcel)
-        vm.parcelSheet(true)
-      },
+      onSelectParcel = { selectParcel(it) },
       onCheckLocationPermission = {
         when (PackageManager.PERMISSION_GRANTED) {
           // Check if the location permission is already granted
-
           ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) -> {
             // Fetch the user's location and update the camera
-            vm.fetchUserLocation(context, fusedLocationClient)
-          }
-
-          else -> {
+            fetchUserLocation(fusedLocationClient)
+          } else -> {
             // Request the location permission if it has not been granted
             permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
           }
         }
       }
     )
-
-
-    val parcelState by vm.parcelState.collectAsState()
 
     BottomSheet(
       isComputing = parcelState.isComputing,
@@ -342,16 +405,19 @@ class MainActivity : ComponentActivity() {
       deliveryDuration = parcelState.deliveryDuration,
       parcel = parcelState.parcel,
       parcels = parcelState.deliveries,
-      onDismiss = { vm.parcelSheet(shouldShow = false) },
-      onGetDeliveryRecommendation = { parcel -> vm.getDeliveryRecommendation(context, parcel) }
+      onDismiss = deselectParcel,
+      onGetDeliveryRecommendation = { parcel -> getDeliveryRecommendation(parcel) }
     )
   }
 
   @Composable
   fun DeliveryDestination(modifier: Modifier = Modifier,
-                          onBackHandler: () -> Unit) {
-    val uiState by vm.deliveryUiState.collectAsState()
-    val context = LocalContext.current
+                          onBackHandler: () -> Unit,
+                          uiState: DeliveryUiState,
+                          getDeliveryRecommendation: () -> Unit
+  ) {
+    // val uiState by vm.deliveryUiState.collectAsState()
+    // val context = LocalContext.current
 
     DeliveryContent(
       modifier,
@@ -361,7 +427,7 @@ class MainActivity : ComponentActivity() {
       isLoading = uiState.isComputing,
       loadingProgress = uiState.computingProgress,
       onGetDeliveryRecommendation = {
-        vm.getDeliveryRecommendation(context)
+        getDeliveryRecommendation()
       }
     )
     BackHandler(enabled = true) { onBackHandler() }
@@ -370,7 +436,6 @@ class MainActivity : ComponentActivity() {
   @OptIn(ExperimentalMaterial3Api::class)
   @Composable
   fun SettingsScreen(
-    // navController: NavHostController,
     state: SettingsUIState,
     onSetPreference: (String) -> Unit,
     onClearPreference: () -> Unit,
@@ -378,14 +443,7 @@ class MainActivity : ComponentActivity() {
     onUpdateSwitchPreference: (String, Boolean) -> Unit,
     onBackButtonClick: () -> Unit,
     request: ActivityResultLauncher<Uri?>,
-    // vmSettings: SettingsViewModel,
   ) {
-    // val host by vmSettings.host.collectAsState()
-    // val optMethod by vmSettings.optMethod.collectAsState()
-    // val useOnlineApi by vmSettings.useOnlineApi.collectAsState()
-    // val state by vmSettings.settingsUiState.collectAsState()
-    // val host = state.hostFriendlyValues
-    // val optMethod = state.optMethodFriendlyValues
     Scaffold(topBar = {
         SettingsScreenTopAppBar(onBackButtonClick = { onBackButtonClick() } )
       }) { padding ->
@@ -394,23 +452,20 @@ class MainActivity : ComponentActivity() {
         PreferencesKeys.OPTIMIZER to state.optimizerFriendlyValue,
         PreferencesKeys.OPT_METHOD to state.optMethodFriendlyValue,
         PreferencesKeys.USE_API to state.useOnlineApiFriendlyValue,
-        PreferencesKeys.LOG_FILE to state.logFileFriendlyValue
+        PreferencesKeys.LOG_FILE to state.logFileFriendlyValue,
+        PreferencesKeys.HEURISTIC_INIT to state.useHeuristicValue
         ),
-        onCategoryItemClick = {
-          onSetPreference(it)
-          // vmSettings.setPreference(it)
-        },
+        onCategoryItemClick = { onSetPreference(it) },
         onUpdateSwitchPreference = {
-          // key, value -> vmSettings.updateSwitchPreference(key, value)
           key, value -> onUpdateSwitchPreference(key, value)
         }
       )
       if (state.preference.key.isNotBlank())
-        PreferenceDialog(onDismiss = { onClearPreference() }, // vmSettings.clearPreference() },
+        PreferenceDialog(onDismiss = { onClearPreference() },
           preference = state.preference,
           preferenceOptions = state.options,
           onUpdatePreference = {
-            key, value -> onUpdatePreference(key, value) // vmSettings.updatePreference(key, value)
+            key, value -> onUpdatePreference(key, value)
           },
           request = request
         )

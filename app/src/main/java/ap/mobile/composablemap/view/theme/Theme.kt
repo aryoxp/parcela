@@ -11,7 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import ap.mobile.composablemap.ui.theme.AppTypography
+import ap.mobile.composablemap.view.theme.AppTypography
 
 private val lightScheme = lightColorScheme(
     primary = primaryLight,

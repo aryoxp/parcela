@@ -1,4 +1,4 @@
-package ap.mobile.composablemap
+package ap.mobile.composablemap.repository
 
 import android.content.Context
 import androidx.datastore.core.DataStore
@@ -8,7 +8,6 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
-import ap.mobile.composablemap.PreferenceRepository.Preference.Type
 import kotlinx.coroutines.flow.first
 
 private const val PREFERENCES_NAME = "app_preferences"
@@ -20,6 +19,7 @@ object PreferencesKeys {
   const val USE_API = "USE_API"
   const val OPTIMIZER = "OPTIMIZER"
   const val LOG_FILE = "LOG_FILE"
+  const val HEURISTIC_INIT = "HEURISTIC_INIT"
 }
 
 data class PreferenceState(
@@ -28,7 +28,7 @@ data class PreferenceState(
   val friendlyValue: String = "",
   val title: String = "",
   val description: String = "",
-  val type: Type = Type.STRING
+  val type: PreferenceRepository.Preference.Type = PreferenceRepository.Preference.Type.STRING
 )
 
 class PreferenceRepository(
@@ -135,6 +135,12 @@ class PreferenceRepository(
         "Log File",
         "Location of Log File",
         "Nothing"))
+    prefs.put(PreferencesKeys.HEURISTIC_INIT,
+      SwitchPreference(PreferencesKeys.HEURISTIC_INIT,
+        "Heuristic Pheromone Initialization",
+        "Use heuristic for pheromone level initialization.",
+        false
+      ))
     for (pref in prefs.values) {
       when (pref) {
         is ListPreference -> {

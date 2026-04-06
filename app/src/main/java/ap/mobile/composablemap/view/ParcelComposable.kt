@@ -1,4 +1,4 @@
-package ap.mobile.composablemap.ui
+package ap.mobile.composablemap.view
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
@@ -24,11 +24,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ap.mobile.composablemap.AppTheme
-import ap.mobile.composablemap.Parcel
+import ap.mobile.composablemap.model.ParcelMapItem
 
 
 @Composable
-fun ParcelItem(parcel: Parcel) {
+fun ParcelItem(parcel: ParcelMapItem) {
   Row(Modifier
     .fillMaxWidth()
     .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
@@ -78,7 +78,7 @@ fun ParcelItem(parcel: Parcel) {
 fun PreviewParcelItem() {
   AppTheme(darkTheme = false, dynamicColor = false) {
     ParcelItem(
-      Parcel(
+      ParcelMapItem(
         1, recipientName = "Djoko Sudemo",
         address = "Jl Agung Timur 4 Blok O No. 2 Kav. 18-19, Sunter Podomoro, North Jakarta"
       )
@@ -89,7 +89,7 @@ fun PreviewParcelItem() {
 @Composable
 fun ParcelDestination(modifier: Modifier = Modifier,
                       onBackHandler: () -> Unit,
-                      parcels: List<Parcel>) {
+                      parcels: List<ParcelMapItem>) {
   LazyColumn(modifier = modifier) {
     items(parcels) { parcel ->
       ParcelItem(parcel)

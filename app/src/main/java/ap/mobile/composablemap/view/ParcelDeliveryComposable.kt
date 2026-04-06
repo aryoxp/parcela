@@ -1,4 +1,4 @@
-package ap.mobile.composablemap.ui
+package ap.mobile.composablemap.view
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -39,11 +39,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ap.mobile.composablemap.AppTheme
-import ap.mobile.composablemap.Parcel
-import ap.mobile.composablemap.backgroundLight
+import ap.mobile.composablemap.model.ParcelMapItem
 
 @Composable
-fun ParcelDeliveryItem(parcel: Parcel) {
+fun ParcelDeliveryItem(parcel: ParcelMapItem) {
   Row(Modifier
     .fillMaxWidth()
     .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
@@ -90,7 +89,7 @@ fun ParcelDeliveryItem(parcel: Parcel) {
 
 @Composable
 fun DeliveryMetaInformation(
-  parcels: List<Parcel>,
+  parcels: List<ParcelMapItem>,
   distance: Float,
   duration: Float
 ) {
@@ -129,7 +128,7 @@ fun DeliveryMetaInformation(
 fun DeliveryContent(
   modifier: Modifier = Modifier,
   isLoading: Boolean,
-  parcels: List<Parcel>,
+  parcels: List<ParcelMapItem>,
   loadingProgress: Float,
   distance: Float = 0f,
   duration: Float = 0f,
