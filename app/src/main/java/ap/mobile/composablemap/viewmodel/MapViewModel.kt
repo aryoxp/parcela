@@ -14,9 +14,10 @@ import ap.mobile.composablemap.model.ParcelMapItem
 import ap.mobile.composablemap.repository.ParcelRepository
 import ap.mobile.composablemap.repository.PreferenceRepository
 import ap.mobile.composablemap.repository.PreferencesKeys
-import ap.mobile.composablemap.repository.Result
 import ap.mobile.composablemap.optimizer.Delivery
 import ap.mobile.composablemap.optimizer.Optimizer
+import ap.mobile.composablemap.repository.ComputeResult
+import ap.mobile.composablemap.usecase.DeliveryUseCase
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.Priority
 import com.google.android.gms.maps.model.LatLng
@@ -30,6 +31,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import kotlin.onSuccess
 
 class MapViewModel(app: Application) : AndroidViewModel(app) {
 
@@ -46,7 +48,7 @@ class MapViewModel(app: Application) : AndroidViewModel(app) {
   val parcelState: StateFlow<ParcelUIState> = _parcelState.asStateFlow()
 
   init {
-    getParcels()
+    // getParcels()
   }
 
   fun moveToSingapore() {
@@ -105,17 +107,35 @@ class MapViewModel(app: Application) : AndroidViewModel(app) {
 
   fun getParcels() {
     // val context = getApplication<Application>().applicationContext
-    viewModelScope.launch {
-      val parcels = ParcelRepository(context = context).getAllParcels()
-      _parcelState.update { currentState ->
-        currentState.copy(parcels = parcels)
+    viewModelScope.launch(Dispatchers.IO) {
+
+      val parcels = DeliveryUseCase.getPackagesToDeliver(
+        ParcelRepository(context)
+      )
+
+      if (parcels.size > 0) {
+        _parcelState.update { currentState ->
+          currentState.copy(parcels = parcels)
+        }
+        _deliveryUiState.update { currentState ->
+          currentState.copy(deliveryRoute = parcels)
+        }
+        _mapUiState.update { currentState ->
+          currentState.copy(parcels = parcels)
+        }
       }
-      _deliveryUiState.update { currentState ->
-        currentState.copy(deliveryRoute = parcels)
-      }
-      _mapUiState.update { currentState ->
-        currentState.copy(parcels = parcels)
-      }
+      // ParcelRepository(context).getAllParcels().onSuccess { p ->
+      //   _parcelState.update { currentState ->
+      //     currentState.copy(parcels = p)
+      //   }
+      //   _deliveryUiState.update { currentState ->
+      //     currentState.copy(deliveryRoute = p)
+      //   }
+      //   _mapUiState.update { currentState ->
+      //     currentState.copy(parcels = p)
+      //   }
+      // }
+
     }
   }
 
@@ -137,7 +157,7 @@ class MapViewModel(app: Application) : AndroidViewModel(app) {
         useHeuristicInit = preferenceRepository.getBoolean(PreferencesKeys.HEURISTIC_INIT)
       )
       when (result) {
-        is Result.Success<Delivery> -> {
+        is ComputeResult.Success<Delivery> -> {
           _deliveryUiState.update { currentState ->
             currentState.copy(
               deliveryRoute = result.data.parcels,

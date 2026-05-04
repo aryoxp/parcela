@@ -5,36 +5,102 @@ import android.os.Build
 import androidx.annotation.RequiresApi
 import ap.mobile.composablemap.abc.BeeColony
 import ap.mobile.composablemap.aco.AntColony
+import ap.mobile.composablemap.entity.ParcelEntity
 import ap.mobile.composablemap.model.ParcelMapItem
 import ap.mobile.composablemap.optimizer.Delivery
 import ap.mobile.composablemap.optimizer.Optimizer
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
 import java.lang.Thread.sleep
 import kotlin.system.measureTimeMillis
 
-sealed class Result<out R> {
-  data class Success<out T>(val data: T) : Result<T>()
-  data class Error(val exception: Exception) : Result<Nothing>()
+sealed class ComputeResult<out R> {
+  data class Success<out T>(val data: T) : ComputeResult<T>()
+  data class Error(val exception: Exception) : ComputeResult<Nothing>()
 }
 
 class ParcelRepository(val context: Context) {
-  private val parcels = mutableListOf<ParcelMapItem>()
+  private val parcels by lazy {  mutableListOf<ParcelMapItem>() }
   private var optimizer = Optimizer.ACO
 
-  init {
-    // Pre-populate the repository with some sample data
-    // parcels.add(Parcel(1, name = "user1", address = "user1@example.com"))
-    // parcels.add(Parcel(2, name = "user2", address = "user2@example.com"))
-    // parcels.add(Parcel(3, name = "user3", address = "user3@example.com"))
-    // parcels.add(Parcel(4, name = "user4", address = "user4@example.com"))
-    // parcels.add(Parcel(5, name = "user5", address = "user5@example.com"))
-    // parcels.add(Parcel(6, name = "user6", address = "user6@example.com"))
-    // parcels.add(Parcel(7, name = "user7", address = "user7@example.com"))
-    // parcels.add(Parcel(8, name = "user8", address = "user8@example.com"))
-    // parcels.add(Parcel(9, name = "user9", address = "user9@example.com"))
-    // parcels.add(Parcel(10, name = "user10", address = "user10@example.com"))
+
+
+  fun getAllParcels(): List<ParcelMapItem> {
+    val response = RetrofitClient.apiService.getParcels().execute();
+    if (response.isSuccessful) {
+      val parcelsDto: List<ParcelEntity> = response.body() ?: emptyList()
+      val parcels = mutableListOf<ParcelMapItem>()
+      parcelsDto.forEach { p -> // mapping dari parcel DTO ke parcel "App"
+        parcels.add(ParcelMapItem(
+          id = p.id,
+          lat = p.lat,
+          lng = p.lng,
+          type = p.type,
+          recipientName = p.recipientName,
+          address = p.address
+        ))
+      }
+      return parcels
+    } else return emptyList()
+  }
+
+  @RequiresApi(Build.VERSION_CODES.Q)
+  private fun report(cycle: Int, fitness: Double) {
+    // saveFile(
+    //   context = context,
+    //   path = "Download/data",
+    //   fileName = "aco.csv".takeIf { this.optimizer == "ACO" } ?: "abc.csv",
+    //   mode = "wa",
+    //   content = "$cycle,$fitness\n",
+    // )
+  }
+
+  @RequiresApi(Build.VERSION_CODES.Q)
+  suspend fun computeDelivery(
+    progress: (Float) -> Unit,
+    parcel: ParcelMapItem?,
+    optimizer: Optimizer,
+    useHeuristicInit: Boolean? = false
+  ): ComputeResult<Delivery> {
+    this.optimizer = optimizer
+    return withContext(Dispatchers.Main) {
+      var delivery = Delivery(listOf(), 0f, 0f)
+      for (i in 1..1) {
+        // thread(start = true) {
+          print("Sample $i\n")
+          val opt = when (optimizer) {
+            Optimizer.ACO ->
+              AntColony(parcels, progress = progress, report = ::report, startAtParcel = parcel, useHeuristicInit = useHeuristicInit)
+            Optimizer.ABC ->
+              BeeColony(parcels, progress = progress, report = ::report, startAtParcel = parcel)
+          }
+          val elapsed = measureTimeMillis {
+            // runBlocking(Dispatchers.IO) {
+              delivery = opt.compute()
+            // }
+          }
+          // println("Elapsed time: $elapsed, Best cycle: ${opt.bestCycle}")
+          // saveFile(
+          //   context = context,
+          //   path = "Download/data",
+          //   fileName = "aco-perf.csv".takeIf { optimizer == "ACO" } ?: "abc-perf.csv",
+          //   mode = "wa",
+          //   content = "$elapsed,${opt.bestCycle},${opt.fitness}\n",
+          // )
+          println("$elapsed ms, at cycle: ${opt.bestCycle}, fitness:${opt.fitness}\n")
+          System.gc()
+          sleep(100)
+        // }
+      }
+      if (delivery.distance == 0f) ComputeResult.Error(Exception("Invalid result."))
+      ComputeResult.Success(delivery)
+    }
+  }
+
+  fun getDummyPackagesList() : List<ParcelMapItem> {
 
     parcels.add(
       ParcelMapItem(
@@ -337,62 +403,6 @@ class ParcelRepository(val context: Context) {
       )
     )
 
-  }
-
-  fun getAllParcels(): List<ParcelMapItem> {
-    return parcels.toList()
-  }
-
-  @RequiresApi(Build.VERSION_CODES.Q)
-  private fun report(cycle: Int, fitness: Double) {
-    // saveFile(
-    //   context = context,
-    //   path = "Download/data",
-    //   fileName = "aco.csv".takeIf { this.optimizer == "ACO" } ?: "abc.csv",
-    //   mode = "wa",
-    //   content = "$cycle,$fitness\n",
-    // )
-  }
-
-  @RequiresApi(Build.VERSION_CODES.Q)
-  suspend fun computeDelivery(
-    progress: (Float) -> Unit,
-    parcel: ParcelMapItem?,
-    optimizer: Optimizer,
-    useHeuristicInit: Boolean? = false
-  ): Result<Delivery> {
-    this.optimizer = optimizer
-    return withContext(Dispatchers.IO) {
-      var delivery = Delivery(listOf(), 0f, 0f)
-      for (i in 1..1) {
-        // thread(start = true) {
-          print("Sample $i\n")
-          val opt = when (optimizer) {
-            Optimizer.ACO ->
-              AntColony(parcels, progress = progress, report = ::report, startAtParcel = parcel, useHeuristicInit = useHeuristicInit)
-            Optimizer.ABC ->
-              BeeColony(parcels, progress = progress, report = ::report, startAtParcel = parcel)
-          }
-          val elapsed = measureTimeMillis {
-            // runBlocking(Dispatchers.IO) {
-              delivery = opt.compute()
-            // }
-          }
-          // println("Elapsed time: $elapsed, Best cycle: ${opt.bestCycle}")
-          // saveFile(
-          //   context = context,
-          //   path = "Download/data",
-          //   fileName = "aco-perf.csv".takeIf { optimizer == "ACO" } ?: "abc-perf.csv",
-          //   mode = "wa",
-          //   content = "$elapsed,${opt.bestCycle},${opt.fitness}\n",
-          // )
-          println("$elapsed ms, at cycle: ${opt.bestCycle}, fitness:${opt.fitness}\n")
-          System.gc()
-          sleep(100)
-        // }
-      }
-      if (delivery.distance == 0f) Result.Error(Exception("Invalid result."))
-      Result.Success(delivery)
-    }
+    return parcels
   }
 }

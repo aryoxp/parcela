@@ -531,7 +531,8 @@ fun DeliveryMap(modifier: Modifier = Modifier,
         )
       }
     }
-    LaunchedEffect(Unit) {
+    LaunchedEffect(parcels) {
+
       println("Launched Effect!")
       if (parcels.isEmpty()) {
         cameraPositionState.position =

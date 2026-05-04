@@ -33,6 +33,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -132,6 +133,9 @@ class MainActivity : ComponentActivity() {
           updateSwitchPreference = { key, value -> vmSettings.updateSwitchPreference(key, value) },
           clearPreference = { vmSettings.clearPreference() }
         )
+        // mengambil data parcel
+        // saat pertama kali UI di-render.
+        LaunchedEffect(Unit) { vm.getParcels() }
       }
     }
   }
@@ -200,7 +204,7 @@ class MainActivity : ComponentActivity() {
           selectParcel = { selectParcel(it) },
           deliveryUiState = deliveryUiState,
           parcelState = parcelUiState,
-          getDeliveryRecommendation = { getDeliveryRecommendation(it) }
+          getDeliveryRecommendation = { getDeliveryRecommendation(it) },
         )
       }
       composable<Nav.Settings> {
@@ -226,7 +230,7 @@ class MainActivity : ComponentActivity() {
     selectParcel: (ParcelMapItem?) -> Unit,
     deliveryUiState: DeliveryUiState,
     parcelState: ParcelUIState,
-    getDeliveryRecommendation: (ParcelMapItem?) -> Unit
+    getDeliveryRecommendation: (ParcelMapItem?) -> Unit,
   ) {
     var tabIndex by remember { mutableIntStateOf(0) }
     var showExitDialog by remember { mutableStateOf(false) }
