@@ -10,13 +10,17 @@ import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import ap.mobile.composablemap.abc.BeeColony
+import ap.mobile.composablemap.aco.AntColony
 import ap.mobile.composablemap.model.ParcelMapItem
 import ap.mobile.composablemap.repository.ParcelRepository
 import ap.mobile.composablemap.repository.PreferenceRepository
 import ap.mobile.composablemap.repository.PreferencesKeys
 import ap.mobile.composablemap.optimizer.Delivery
+import ap.mobile.composablemap.optimizer.IOptimizer
 import ap.mobile.composablemap.optimizer.Optimizer
 import ap.mobile.composablemap.repository.ComputeResult
+import ap.mobile.composablemap.repository.ProgressStatus
 import ap.mobile.composablemap.usecase.DeliveryUseCase
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.Priority
@@ -26,8 +30,12 @@ import com.google.android.gms.tasks.CancellationTokenSource
 import com.google.android.gms.tasks.OnTokenCanceledListener
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -36,7 +44,6 @@ import kotlin.onSuccess
 class MapViewModel(app: Application) : AndroidViewModel(app) {
 
   private val context = getApplication<Application>().applicationContext
-  private val parcelRepository: ParcelRepository = ParcelRepository(context = context)
 
   private val _mapUiState = MutableStateFlow(MapUiState())
   val mapUiState: StateFlow<MapUiState> = _mapUiState.asStateFlow()
@@ -46,6 +53,8 @@ class MapViewModel(app: Application) : AndroidViewModel(app) {
 
   private val _parcelState = MutableStateFlow(ParcelUIState())
   val parcelState: StateFlow<ParcelUIState> = _parcelState.asStateFlow()
+
+  var parcels: List<ParcelMapItem> = mutableListOf()
 
   init {
     // getParcels()
@@ -86,10 +95,10 @@ class MapViewModel(app: Application) : AndroidViewModel(app) {
               moveToLocation(LatLng(location.latitude, location.longitude))
           }
       } catch (e: SecurityException) {
-        Timber.Forest.e("Permission for location access was revoked: ${e.localizedMessage}")
+        Timber.e("Permission for location access was revoked: ${e.localizedMessage}")
       }
     } else {
-      Timber.Forest.e("Location permission is not granted.")
+      Timber.e("Location permission is not granted.")
     }
   }
 
@@ -109,9 +118,7 @@ class MapViewModel(app: Application) : AndroidViewModel(app) {
     // val context = getApplication<Application>().applicationContext
     viewModelScope.launch(Dispatchers.IO) {
 
-      val parcels = DeliveryUseCase.getPackagesToDeliver(
-        ParcelRepository(context)
-      )
+      parcels = DeliveryUseCase.getPackagesToDeliver(ParcelRepository())
 
       if (parcels.size > 0) {
         _parcelState.update { currentState ->
@@ -141,58 +148,109 @@ class MapViewModel(app: Application) : AndroidViewModel(app) {
 
   @RequiresApi(Build.VERSION_CODES.Q)
   fun getDeliveryRecommendation(context: Context, parcel: ParcelMapItem? = null) {
-    _deliveryUiState.update { currentState ->
-      currentState.copy(isComputing = true) }
-    _parcelState.update { currentState ->
-      currentState.copy(isComputing = true)
-    }
 
-    val preferenceRepository : PreferenceRepository = PreferenceRepository(context)
+    val preferenceRepository = PreferenceRepository(context)
+    val repository = ParcelRepository()
 
-    viewModelScope.launch(Dispatchers.IO) {
-      val result = parcelRepository.computeDelivery(
-        ::setProgress,
-        parcel,
-        optimizer = Optimizer.valueOf(preferenceRepository.getString(PreferencesKeys.OPTIMIZER).toString()),
-        useHeuristicInit = preferenceRepository.getBoolean(PreferencesKeys.HEURISTIC_INIT)
-      )
-      when (result) {
-        is ComputeResult.Success<Delivery> -> {
+    viewModelScope.launch(Dispatchers.Default) {
+      val selectedOptimizer = Optimizer.valueOf(preferenceRepository.getString(PreferencesKeys.OPTIMIZER).toString())
+      val useHeuristicInit = preferenceRepository.getBoolean(PreferencesKeys.HEURISTIC_INIT)
+      // val parcels = DeliveryUseCase.getPackagesToDeliver(repository)
+      val optimizer: IOptimizer = when (selectedOptimizer) {
+        Optimizer.ACO -> AntColony(parcels = parcels, progress = {}, startAtParcel = parcel, useHeuristicInit = useHeuristicInit)
+        else -> BeeColony(parcels = parcels, progress = {}, startAtParcel = parcel)
+      } as IOptimizer
+
+      DeliveryUseCase.getDeliverySequence(repository, optimizer).collect{
+        progressStatus ->
           _deliveryUiState.update { currentState ->
-            currentState.copy(
-              deliveryRoute = result.data.parcels,
-              deliveryDistance = result.data.distance,
-              deliveryDuration = result.data.duration,
-              isComputing = false
-            )
-          }
+            currentState.copy(isComputing = true) }
           _parcelState.update { currentState ->
-            currentState.copy(
-              isComputing = false,
-              deliveries = result.data.parcels,
-              deliveryDistance = result.data.distance,
-              deliveryDuration = result.data.duration,
-            )
+            currentState.copy(isComputing = true)
           }
-          val deliveryRoute = mutableListOf<LatLng>()
-          result.data.parcels.forEach {
-            deliveryRoute.add(it.position)
+          when(progressStatus) {
+            is ProgressStatus.Loading -> {
+              _parcelState.update { it.copy(
+                isComputing = true)
+              }
+              _deliveryUiState.update { it.copy(
+                computingProgress = progressStatus.percentage,
+                isComputing = true)
+              }
+            }
+            is ProgressStatus.Success -> {
+              _parcelState.update { it.copy(
+                isComputing = false)
+              }
+              _deliveryUiState.update { it.copy(
+                deliveryRoute = progressStatus.parcels,
+                deliveryDuration = progressStatus.duration,
+                deliveryDistance = progressStatus.distance,
+                isComputing = false)
+              }
+              val deliveryRoute = mutableListOf<LatLng>()
+              progressStatus.parcels.forEach {
+                deliveryRoute.add(it.position)
+              }
+              _mapUiState.update {currentState ->
+                currentState.copy(deliveryRoute = deliveryRoute)
+              }
+            }
+            else -> {
+              _deliveryUiState.update { currentState ->
+                currentState.copy(isComputing = false) }
+              _parcelState.update { currentState ->
+                currentState.copy(isComputing = false)
+              }
+            }
           }
-          _mapUiState.update {currentState ->
-            currentState.copy(deliveryRoute = deliveryRoute)
-          }
-        }
-        else -> {}// Show error in UI
       }
     }
+
+    // viewModelScope.launch(Dispatchers.Default) {
+      // val result = parcelRepository.computeDelivery(
+      //   ::setProgress,
+      //   parcel,
+      //   optimizer = Optimizer.valueOf(preferenceRepository.getString(PreferencesKeys.OPTIMIZER).toString()),
+      //   useHeuristicInit = preferenceRepository.getBoolean(PreferencesKeys.HEURISTIC_INIT)
+      // )
+      // when (result) {
+      //   is ComputeResult.Success<Delivery> -> {
+      //     _deliveryUiState.update { currentState ->
+      //       currentState.copy(
+      //         deliveryRoute = result.data.parcels,
+      //         deliveryDistance = result.data.distance,
+      //         deliveryDuration = result.data.duration,
+      //         isComputing = false
+      //       )
+      //     }
+      //     _parcelState.update { currentState ->
+      //       currentState.copy(
+      //         isComputing = false,
+      //         deliveries = result.data.parcels,
+      //         deliveryDistance = result.data.distance,
+      //         deliveryDuration = result.data.duration,
+      //       )
+      //     }
+      //     val deliveryRoute = mutableListOf<LatLng>()
+      //     result.data.parcels.forEach {
+      //       deliveryRoute.add(it.position)
+      //     }
+      //     _mapUiState.update {currentState ->
+      //       currentState.copy(deliveryRoute = deliveryRoute)
+      //     }
+      //   }
+      //   else -> {}// Show error in UI
+      // }
+    // }
   }
 
-  fun setProgress(progress: Float): Float {
-    _deliveryUiState.update { currentState ->
-      currentState.copy(computingProgress = progress)
-    }
-    return progress
-  }
+  // fun setProgress(progress: Float): Float {
+  //   _deliveryUiState.update { currentState ->
+  //     currentState.copy(computingProgress = progress)
+  //   }
+  //   return progress
+  // }
 
   fun selectParcel(parcel: ParcelMapItem?) {
     // _mapUiState.update { currentState ->

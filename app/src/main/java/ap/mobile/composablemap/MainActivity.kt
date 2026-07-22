@@ -47,6 +47,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.IntOffset
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -113,10 +114,10 @@ class MainActivity : ComponentActivity() {
     }
     setContent {
       AppTheme(darkTheme = false, dynamicColor = false) {
-        val mapUiState by vm.mapUiState.collectAsState()
-        val deliveryUiState by vm.deliveryUiState.collectAsState()
-        val settingsUIState by vmSettings.settingsUiState.collectAsState()
-        val parcelState by vm.parcelState.collectAsState()
+        val mapUiState by vm.mapUiState.collectAsStateWithLifecycle()
+        val deliveryUiState by vm.deliveryUiState.collectAsStateWithLifecycle()
+        val settingsUIState by vmSettings.settingsUiState.collectAsStateWithLifecycle()
+        val parcelState by vm.parcelState.collectAsStateWithLifecycle()
         MyScaffold(
           request, mapUiState,
           fetchUserLocation = { vm.fetchUserLocation(this, it) },

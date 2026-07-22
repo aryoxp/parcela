@@ -12,7 +12,7 @@ class BeeColony (
   val forageLimit: Int = 50,
   val cycleLimit: Int = 30,
   val progress: (progress: Float) -> Unit,
-  val report: (cycle: Int, fitness: Double) -> Unit,
+  // val report: (cycle: Int, fitness: Double) -> Unit,
   val startAtParcel: ParcelMapItem? = null,
 ) : IOptimizer {
   private val bees = mutableListOf<Bee>()
@@ -50,7 +50,7 @@ class BeeColony (
     processedAltar.sortWith(compareBy(Food::nectar))
   }
 
-  override suspend fun compute(): Delivery {
+  override suspend fun compute(onProgress: suspend (Float) -> Unit): Delivery {
     var bestFood: Food? = null
     var bestCycle = 0
     for (cycle in 1..cycleLimit) {
@@ -115,7 +115,7 @@ class BeeColony (
       // println("Altar Best Food ${altarBestFood.nectar}")
       // println("Best Food ${bestCycle}/${cycle}: ${bestFood.nectar}")
       this.fitness = altarBestFood.nectar
-      report(cycle, altarBestFood.nectar)
+      // report(cycle, altarBestFood.nectar)
       progress(cycle.toFloat() / cycleLimit.toFloat())
       // delay(10)
     }

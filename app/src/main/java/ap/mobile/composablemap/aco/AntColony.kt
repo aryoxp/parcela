@@ -11,7 +11,7 @@ class AntColony(
   val cycleConvergence: Int = 30,
   val rho: Float = .5f,
   val progress: (progress: Float) -> Unit,
-  val report: (cycle: Int, fitness: Double) -> Unit,
+  // val report: (cycle: Int, fitness: Double) -> Unit,
   val startAtParcel: ParcelMapItem? = null,
   val useHeuristicInit: Boolean? = false
 ) : IOptimizer {
@@ -53,7 +53,7 @@ class AntColony(
     }
   }
 
-  override suspend fun compute(): Delivery {
+  override suspend fun compute(onProgress: suspend (Float) -> Unit): Delivery {
     var bestPath: Path? = null
     var bestCycle = 0
     var convergence = 0
@@ -88,8 +88,8 @@ class AntColony(
       else convergence = 0
 
       // println("Best Path ${bestCycle}/${cycle}: ${bestPath?.sugar}")
-      report(cycle, bestPath?.sugar ?: 0.0)
-      progress(cycle.toFloat() / cycleLimit.toFloat())
+      // report(cycle, bestPath?.sugar ?: 0.0)
+      onProgress(cycle.toFloat() / cycleLimit.toFloat())
       // delay(10)
       if (convergence >= cycleConvergence) {
         println("CONVERGE! at cycle: ${this.bestCycle}")

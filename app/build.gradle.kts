@@ -6,7 +6,7 @@ plugins {
 
 android {
   namespace = "ap.mobile.composablemap"
-  compileSdk = 36
+  compileSdk = 37
 
   buildFeatures {
     compose = true
@@ -63,22 +63,22 @@ dependencies {
 
   implementation("androidx.compose.material3:material3:1.4.0")
   implementation("androidx.compose.material:material-icons-extended:1.7.8")
-  implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
-  implementation("com.google.maps.android:maps-compose:8.2.2")
-  implementation("com.google.maps.android:maps-compose-utils:8.2.2")
-  implementation("androidx.navigation:navigation-compose:2.9.7")
+  implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
+  implementation("com.google.maps.android:maps-compose:8.4.0")
+  implementation("com.google.maps.android:maps-compose-utils:8.4.0")
+  implementation("androidx.navigation:navigation-compose:2.9.8")
   implementation("com.google.android.gms:play-services-maps:20.0.0")
-  implementation("com.google.android.gms:play-services-location:21.3.0")
+  implementation("com.google.android.gms:play-services-location:21.4.0")
   implementation("com.jakewharton.timber:timber:5.0.1")
-  implementation("androidx.compose.runtime:runtime:1.10.6")
-  implementation("androidx.compose.runtime:runtime-livedata:1.10.6")
-  implementation("androidx.compose.ui:ui-text-google-fonts:1.10.6")
+  implementation("androidx.compose.runtime:runtime:1.11.4")
+  implementation("androidx.compose.runtime:runtime-livedata:1.11.4")
+  implementation("androidx.compose.ui:ui-text-google-fonts:1.11.4")
   implementation("androidx.work:work-runtime-ktx:2.11.2")
 
-  implementation("androidx.navigation:navigation-ui:2.9.7")
-  implementation("androidx.navigation:navigation-compose:2.9.7")
+  implementation("androidx.navigation:navigation-ui:2.9.8")
+  implementation("androidx.navigation:navigation-compose:2.9.8")
 
-  implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.10.0")
+  implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
 
   implementation("androidx.datastore:datastore-preferences:1.2.1")
 

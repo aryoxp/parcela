@@ -2,31 +2,40 @@ package ap.mobile.composablemap.repository
 
 import android.content.Context
 import android.os.Build
+import android.util.Log
 import androidx.annotation.RequiresApi
 import ap.mobile.composablemap.abc.BeeColony
 import ap.mobile.composablemap.aco.AntColony
 import ap.mobile.composablemap.entity.ParcelEntity
 import ap.mobile.composablemap.model.ParcelMapItem
 import ap.mobile.composablemap.optimizer.Delivery
+import ap.mobile.composablemap.optimizer.IOptimizer
 import ap.mobile.composablemap.optimizer.Optimizer
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 import java.lang.Thread.sleep
 import kotlin.system.measureTimeMillis
+import kotlin.time.Duration
 
 sealed class ComputeResult<out R> {
   data class Success<out T>(val data: T) : ComputeResult<T>()
   data class Error(val exception: Exception) : ComputeResult<Nothing>()
 }
 
-class ParcelRepository(val context: Context) {
+sealed interface ProgressStatus {
+  data class Loading(val percentage: Float) : ProgressStatus
+  data class Success(val parcels: List<ParcelMapItem>, val distance: Float, val duration: Float) : ProgressStatus
+  data class Error(val message: String) : ProgressStatus
+}
+
+class ParcelRepository() : Repository() {
+
   private val parcels by lazy {  mutableListOf<ParcelMapItem>() }
-  private var optimizer = Optimizer.ACO
-
-
 
   fun getAllParcels(): List<ParcelMapItem> {
     val response = RetrofitClient.apiService.getParcels().execute();
@@ -58,47 +67,47 @@ class ParcelRepository(val context: Context) {
     // )
   }
 
-  @RequiresApi(Build.VERSION_CODES.Q)
-  suspend fun computeDelivery(
-    progress: (Float) -> Unit,
-    parcel: ParcelMapItem?,
-    optimizer: Optimizer,
-    useHeuristicInit: Boolean? = false
-  ): ComputeResult<Delivery> {
-    this.optimizer = optimizer
-    return withContext(Dispatchers.Main) {
-      var delivery = Delivery(listOf(), 0f, 0f)
-      for (i in 1..1) {
-        // thread(start = true) {
-          print("Sample $i\n")
-          val opt = when (optimizer) {
-            Optimizer.ACO ->
-              AntColony(parcels, progress = progress, report = ::report, startAtParcel = parcel, useHeuristicInit = useHeuristicInit)
-            Optimizer.ABC ->
-              BeeColony(parcels, progress = progress, report = ::report, startAtParcel = parcel)
-          }
-          val elapsed = measureTimeMillis {
-            // runBlocking(Dispatchers.IO) {
-              delivery = opt.compute()
-            // }
-          }
-          // println("Elapsed time: $elapsed, Best cycle: ${opt.bestCycle}")
-          // saveFile(
-          //   context = context,
-          //   path = "Download/data",
-          //   fileName = "aco-perf.csv".takeIf { optimizer == "ACO" } ?: "abc-perf.csv",
-          //   mode = "wa",
-          //   content = "$elapsed,${opt.bestCycle},${opt.fitness}\n",
-          // )
-          println("$elapsed ms, at cycle: ${opt.bestCycle}, fitness:${opt.fitness}\n")
-          System.gc()
-          sleep(100)
-        // }
-      }
-      if (delivery.distance == 0f) ComputeResult.Error(Exception("Invalid result."))
-      ComputeResult.Success(delivery)
-    }
-  }
+  // @RequiresApi(Build.VERSION_CODES.Q)
+  // suspend fun computeDelivery(
+  //   progress: (Float) -> Unit,
+  //   parcel: ParcelMapItem?,
+  //   optimizer: Optimizer,
+  //   useHeuristicInit: Boolean? = false
+  // ): ComputeResult<Delivery> {
+  //   this.optimizer = optimizer
+  //   return withContext(Dispatchers.Main) {
+  //     var delivery = Delivery(listOf(), 0f, 0f)
+  //     for (i in 1..1) {
+  //       // thread(start = true) {
+  //         print("Sample $i\n")
+  //         val opt = when (optimizer) {
+  //           Optimizer.ACO ->
+  //             AntColony(parcels, progress = progress, report = ::report, startAtParcel = parcel, useHeuristicInit = useHeuristicInit)
+  //           Optimizer.ABC ->
+  //             BeeColony(parcels, progress = progress, report = ::report, startAtParcel = parcel)
+  //         }
+  //         val elapsed = measureTimeMillis {
+  //           // runBlocking(Dispatchers.IO) {
+  //             delivery = opt.compute()
+  //           // }
+  //         }
+  //         // println("Elapsed time: $elapsed, Best cycle: ${opt.bestCycle}")
+  //         // saveFile(
+  //         //   context = context,
+  //         //   path = "Download/data",
+  //         //   fileName = "aco-perf.csv".takeIf { optimizer == "ACO" } ?: "abc-perf.csv",
+  //         //   mode = "wa",
+  //         //   content = "$elapsed,${opt.bestCycle},${opt.fitness}\n",
+  //         // )
+  //         println("$elapsed ms, at cycle: ${opt.bestCycle}, fitness:${opt.fitness}\n")
+  //         System.gc()
+  //         sleep(100)
+  //       // }
+  //     }
+  //     if (delivery.distance == 0f) ComputeResult.Error(Exception("Invalid result."))
+  //     ComputeResult.Success(delivery)
+  //   }
+  // }
 
   fun getDummyPackagesList() : List<ParcelMapItem> {
 
@@ -109,7 +118,8 @@ class ParcelRepository(val context: Context) {
         lng = 112.62943,
         type = "Regular",
         recipientName = "Nizar Zulfikar",
-        address = "Simo Jawar VII 54, Jawa Timur"
+        address = "Jalan Gadang Gang 21C, Malang, Jawa Timur 65149\n" +
+            "Malang Jawa Timur Indonesia"
       )
     )
     parcels.add(
@@ -119,7 +129,8 @@ class ParcelRepository(val context: Context) {
         lng = 112.62941,
         type = "Regular",
         recipientName = "Ibrahim Eka",
-        address = "Blora R Gg III 40, Jakarta"
+        address = "Perumahan Gadang Sakinah, Malang, Jawa Timur 65149\n" +
+            "Malang Jawa Timur Indonesia"
       )
     )
     parcels.add(
@@ -404,5 +415,20 @@ class ParcelRepository(val context: Context) {
     )
 
     return parcels
+  }
+
+  fun getDeliverySequence(optimizer: IOptimizer) : Flow<ProgressStatus> = flow {
+    // if(parcels.size == 0) throw Exception("Empty delivery.");
+    // val deliverySequence = mutableListOf<ParcelMapItem>();
+    val delivery: Delivery
+    val elapsed = measureTimeMillis {
+      emit(ProgressStatus.Loading(percentage = 0f))
+      delivery = optimizer.compute(onProgress = { percentage ->
+        emit(ProgressStatus.Loading(percentage = percentage))
+      })
+    }
+    Log.d("Elapsed", elapsed.toString())
+    emit(ProgressStatus.Success(delivery.parcels, delivery.distance, delivery.duration))
+    // return delivery.parcels
   }
 }
