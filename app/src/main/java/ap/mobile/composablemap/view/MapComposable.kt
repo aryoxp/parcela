@@ -3,6 +3,7 @@ package ap.mobile.composablemap.view
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -272,7 +273,8 @@ fun BottomSheet(
   deliveryDistance: Float = 0f,
   deliveryDuration: Float = 0f,
   onDismiss: () -> Unit = {},
-  onGetDeliveryRecommendation: (ParcelMapItem) -> Unit = {}
+  onGetDeliveryRecommendation: (ParcelMapItem) -> Unit = {},
+  onCancelGetDeliveryRecommendation: () -> Unit
 ) {
   val sheetState = rememberModalBottomSheetState()
   val scope = rememberCoroutineScope()
@@ -313,18 +315,27 @@ fun BottomSheet(
                   )
                 }
                 Button(onClick = {
-                  onGetDeliveryRecommendation(parcel)
-                  // vm.getDeliveryRecommendation(parcel)
+                  if (!isComputing) onGetDeliveryRecommendation(parcel)
+                  else onCancelGetDeliveryRecommendation()
                 },
                   shape = CircleShape,
                   contentPadding = PaddingValues(0.dp),
                   modifier = Modifier.requiredSize(56.dp),
                 ) {
                   if (isComputing) {
-                    CircularProgressIndicator(
-                      color = MaterialTheme.colorScheme.surface,
-                      modifier = Modifier.size(28.dp)
-                    )
+                    Box(
+                      contentAlignment = Alignment.Center, // Centers both the indicator and the square
+                      modifier = Modifier.size(64.dp)     // Total bounding size
+                    ) {
+                      CircularProgressIndicator(
+                        color = MaterialTheme.colorScheme.surface,
+                        modifier = Modifier.size(28.dp)
+                      )
+                      Box(modifier = Modifier
+                        .size(10.dp)
+                        .background(MaterialTheme.colorScheme.surface)
+                      )
+                    }
                   } else {
                     Icon(
                       imageVector = Icons.Default.Directions,

@@ -13,7 +13,7 @@ class DeliveryUseCase {
     }
 
     fun getDeliverySequence(repo: ParcelRepository, optimizer: IOptimizer) : Flow<ProgressStatus> {
-      return repo.getDeliverySequence(optimizer);
+      return repo.getDeliverySequence(optimizer)
     }
   }
 }

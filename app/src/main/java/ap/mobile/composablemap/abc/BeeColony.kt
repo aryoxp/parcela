@@ -11,7 +11,6 @@ class BeeColony (
   numOnlooker: Int = 5,
   val forageLimit: Int = 50,
   val cycleLimit: Int = 30,
-  val progress: (progress: Float) -> Unit,
   // val report: (cycle: Int, fitness: Double) -> Unit,
   val startAtParcel: ParcelMapItem? = null,
 ) : IOptimizer {
@@ -52,7 +51,7 @@ class BeeColony (
 
   override suspend fun compute(onProgress: suspend (Float) -> Unit): Delivery {
     var bestFood: Food? = null
-    var bestCycle = 0
+    var bestCycle: Int
     for (cycle in 1..cycleLimit) {
       // println("\nCycle $cycle")
       // Employed Phase
@@ -91,7 +90,6 @@ class BeeColony (
       // Finding best food for all time
       if (bestFood == null) {
         bestFood = altarBestFood
-        bestCycle = cycle
       } else if (altarBestFood.nectar < bestFood.nectar) {
         bestFood = altarBestFood
         bestCycle = cycle
@@ -116,7 +114,7 @@ class BeeColony (
       // println("Best Food ${bestCycle}/${cycle}: ${bestFood.nectar}")
       this.fitness = altarBestFood.nectar
       // report(cycle, altarBestFood.nectar)
-      progress(cycle.toFloat() / cycleLimit.toFloat())
+      onProgress(cycle.toFloat() / cycleLimit.toFloat())
       // delay(10)
     }
 

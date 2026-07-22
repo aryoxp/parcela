@@ -2,6 +2,7 @@ package ap.mobile.composablemap.aco
 
 import ap.mobile.composablemap.model.ParcelMapItem
 import kotlin.math.pow
+import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
 class Path (
@@ -50,14 +51,20 @@ class Path (
 
   fun getDuration(): Float { // in hrs
     // 10 kph
-    // 10 minutes handover
-    return ((sugar.times(110.574f) / 10f) + (route.size * 10f / 60f)).toFloat()
+    // 3 minutes handover
+    return ((sugar.times(110.574f) / 10f) + (route.size * 3f / 60f)).toFloat()
   }
 
   companion object {
     fun distance(parcel1: ParcelMapItem, parcel2: ParcelMapItem): Double {
       val distance = sqrt((parcel1.lat - parcel2.lat).pow(2) + (parcel1.lng - parcel2.lng).pow(2))
       return distance
+    }
+    fun convertDecimalToHoursMinutes(decimalHours: Float): String {
+      val hours = decimalHours.toInt()
+      val decimalPart = decimalHours - hours
+      val minutes = (decimalPart * 60).roundToInt()
+      return "${hours}h $minutes'"
     }
   }
 }

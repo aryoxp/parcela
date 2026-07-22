@@ -9,6 +9,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
@@ -35,7 +36,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -65,6 +65,7 @@ import ap.mobile.composablemap.view.ParcelDestination
 import ap.mobile.composablemap.view.PreferenceDialog
 import ap.mobile.composablemap.view.SettingsScreenPreferenceList
 import ap.mobile.composablemap.view.SettingsScreenTopAppBar
+import ap.mobile.composablemap.view.theme.UiEvent
 import ap.mobile.composablemap.viewmodel.DeliveryUiState
 import ap.mobile.composablemap.viewmodel.MapUiState
 import ap.mobile.composablemap.viewmodel.MapViewModel
@@ -74,10 +75,10 @@ import ap.mobile.composablemap.viewmodel.SettingsViewModel
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.google.maps.android.compose.MapsComposeExperimentalApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.Serializable
 import timber.log.Timber
 import java.net.URLDecoder
-
 
 class MainActivity : ComponentActivity() {
 
@@ -128,7 +129,11 @@ class MainActivity : ComponentActivity() {
           deliveryUiState = deliveryUiState,
           settingsUiState = settingsUIState,
           parcelUiState = parcelState,
+          eventFlow = vm.eventFlow,
           getDeliveryRecommendation = { vm.getDeliveryRecommendation(this, it) },
+          cancelGetDeliveryRecommendation = {
+            vm.cancelGetDeliveryRecommendation()
+                                            },
           updatePreference = { key, value -> vmSettings.updatePreference(key, value) },
           setPreference = { vmSettings.setPreference(it) },
           updateSwitchPreference = { key, value -> vmSettings.updateSwitchPreference(key, value) },
@@ -148,9 +153,11 @@ class MainActivity : ComponentActivity() {
     parcelUiState: ParcelUIState,
     deliveryUiState: DeliveryUiState,
     settingsUiState: SettingsUIState,
+    eventFlow: Flow<UiEvent>,
     fetchUserLocation: (FusedLocationProviderClient) -> Unit,
     selectParcel: (ParcelMapItem?) -> Unit,
     getDeliveryRecommendation: (ParcelMapItem?) -> Unit,
+    cancelGetDeliveryRecommendation: () -> Unit,
     setPreference: (String) -> Unit,
     updatePreference: (String, String) -> Unit = { _, _ -> },
     updateSwitchPreference: (String, Boolean) -> Unit = { _, _ -> },
@@ -162,6 +169,7 @@ class MainActivity : ComponentActivity() {
 
     val window = (LocalActivity.current as Activity).window
     val view = LocalView.current
+    val context = LocalContext.current
 
     SideEffect {
       // force light mode for status bar items
@@ -206,6 +214,7 @@ class MainActivity : ComponentActivity() {
           deliveryUiState = deliveryUiState,
           parcelState = parcelUiState,
           getDeliveryRecommendation = { getDeliveryRecommendation(it) },
+          cancelGetDeliveryRecommendation = cancelGetDeliveryRecommendation
         )
       }
       composable<Nav.Settings> {
@@ -220,6 +229,17 @@ class MainActivity : ComponentActivity() {
         )
       }
     }
+    // LaunchedEffect(key1 = true) {
+    //   eventFlow.collect { event ->
+    //     when (event) {
+    //       is UiEvent.ShowToast -> {
+    //         Toast.makeText(context,
+    //           event.message,
+    //           Toast.LENGTH_SHORT).show()
+    //       }
+    //     }
+    //   }
+    // }
   }
 
   @Composable
@@ -232,6 +252,7 @@ class MainActivity : ComponentActivity() {
     deliveryUiState: DeliveryUiState,
     parcelState: ParcelUIState,
     getDeliveryRecommendation: (ParcelMapItem?) -> Unit,
+    cancelGetDeliveryRecommendation: () -> Unit
   ) {
     var tabIndex by remember { mutableIntStateOf(0) }
     var showExitDialog by remember { mutableStateOf(false) }
@@ -315,7 +336,8 @@ class MainActivity : ComponentActivity() {
             fetchUserLocation = { fetchUserLocation(it) },
             selectParcel = { selectParcel(it) },
             deselectParcel = { selectParcel(null) },
-            getDeliveryRecommendation = { getDeliveryRecommendation(it) }
+            getDeliveryRecommendation = { getDeliveryRecommendation(it) },
+            cancelGetDeliveryRecommendation = cancelGetDeliveryRecommendation
           )
         }
         composable<NavMain.Parcel> { // (route = MapScreen.Parcel.name) {
@@ -330,7 +352,8 @@ class MainActivity : ComponentActivity() {
             modifier = Modifier.padding(padding),
             onBackHandler = { mainNavController.popBackStack() },
             uiState = deliveryUiState,
-            getDeliveryRecommendation = { getDeliveryRecommendation(null) }
+            getDeliveryRecommendation = { getDeliveryRecommendation(null) },
+            cancelGetDeliveryRecommendation = cancelGetDeliveryRecommendation
           )
         }
       }
@@ -356,13 +379,15 @@ class MainActivity : ComponentActivity() {
 
   @OptIn(MapsComposeExperimentalApi::class, ExperimentalMaterial3Api::class)
   @Composable
-  fun MapDestination(modifier: Modifier = Modifier,
-                     mapUiState: MapUiState,
-                     parcelState: ParcelUIState,
-                     fetchUserLocation: (FusedLocationProviderClient) -> Unit,
-                     selectParcel: (ParcelMapItem?) -> Unit,
-                     deselectParcel: () -> Unit,
-                     getDeliveryRecommendation: (ParcelMapItem) -> Unit
+  fun MapDestination(
+    modifier: Modifier = Modifier,
+    mapUiState: MapUiState,
+    parcelState: ParcelUIState,
+    fetchUserLocation: (FusedLocationProviderClient) -> Unit,
+    selectParcel: (ParcelMapItem?) -> Unit,
+    deselectParcel: () -> Unit,
+    getDeliveryRecommendation: (ParcelMapItem) -> Unit,
+    cancelGetDeliveryRecommendation: () -> Unit
   ) {
     val context = LocalContext.current
 
@@ -411,7 +436,8 @@ class MainActivity : ComponentActivity() {
       parcel = parcelState.parcel,
       parcels = parcelState.deliveries,
       onDismiss = deselectParcel,
-      onGetDeliveryRecommendation = { parcel -> getDeliveryRecommendation(parcel) }
+      onGetDeliveryRecommendation = { parcel -> getDeliveryRecommendation(parcel) },
+      onCancelGetDeliveryRecommendation = cancelGetDeliveryRecommendation
     )
   }
 
@@ -419,7 +445,8 @@ class MainActivity : ComponentActivity() {
   fun DeliveryDestination(modifier: Modifier = Modifier,
                           onBackHandler: () -> Unit,
                           uiState: DeliveryUiState,
-                          getDeliveryRecommendation: () -> Unit
+                          getDeliveryRecommendation: () -> Unit,
+                          cancelGetDeliveryRecommendation: () -> Unit
   ) {
     // val uiState by vm.deliveryUiState.collectAsState()
     // val context = LocalContext.current
@@ -431,9 +458,8 @@ class MainActivity : ComponentActivity() {
       duration = uiState.deliveryDuration,
       isLoading = uiState.isComputing,
       loadingProgress = uiState.computingProgress,
-      onGetDeliveryRecommendation = {
-        getDeliveryRecommendation()
-      }
+      onGetDeliveryRecommendation = getDeliveryRecommendation,
+      onCancelGetDeliveryRecommendation = cancelGetDeliveryRecommendation
     )
     BackHandler(enabled = true) { onBackHandler() }
   }

@@ -16,12 +16,11 @@ import ap.mobile.composablemap.model.ParcelMapItem
 import ap.mobile.composablemap.repository.ParcelRepository
 import ap.mobile.composablemap.repository.PreferenceRepository
 import ap.mobile.composablemap.repository.PreferencesKeys
-import ap.mobile.composablemap.optimizer.Delivery
 import ap.mobile.composablemap.optimizer.IOptimizer
 import ap.mobile.composablemap.optimizer.Optimizer
-import ap.mobile.composablemap.repository.ComputeResult
 import ap.mobile.composablemap.repository.ProgressStatus
 import ap.mobile.composablemap.usecase.DeliveryUseCase
+import ap.mobile.composablemap.view.theme.UiEvent
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.Priority
 import com.google.android.gms.maps.model.LatLng
@@ -29,21 +28,23 @@ import com.google.android.gms.tasks.CancellationToken
 import com.google.android.gms.tasks.CancellationTokenSource
 import com.google.android.gms.tasks.OnTokenCanceledListener
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.cancellable
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
-import kotlin.onSuccess
 
 class MapViewModel(app: Application) : AndroidViewModel(app) {
 
-  private val context = getApplication<Application>().applicationContext
+  private val _eventChannel = Channel<UiEvent>()
+  val eventFlow = _eventChannel.receiveAsFlow() // 2. Expose it as a flow to the UI
+
+  private var job: Job? = null
 
   private val _mapUiState = MutableStateFlow(MapUiState())
   val mapUiState: StateFlow<MapUiState> = _mapUiState.asStateFlow()
@@ -56,13 +57,9 @@ class MapViewModel(app: Application) : AndroidViewModel(app) {
 
   var parcels: List<ParcelMapItem> = mutableListOf()
 
-  init {
-    // getParcels()
-  }
-
-  fun moveToSingapore() {
-    moveToLocation(LatLng(1.35, 103.87))
-  }
+  // fun moveToSingapore() {
+  //   moveToLocation(LatLng(1.35, 103.87))
+  // }
 
   fun moveToLocation(location: LatLng) {
     _mapUiState.update { currentState ->
@@ -102,17 +99,17 @@ class MapViewModel(app: Application) : AndroidViewModel(app) {
     }
   }
 
-  fun setCameraPosition(cameraPosition: LatLng) {
-    println("Camera position: ${cameraPosition.latitude}, ${cameraPosition.longitude}")
-    _mapUiState.update { currentState ->
-      currentState.copy(cameraPosition = cameraPosition) }
-  }
-
-  fun setZoomLevel(zoom: Float) {
-    println("Zoom: $zoom")
-    _mapUiState.update { currentState ->
-      currentState.copy(zoom = zoom) }
-  }
+  // fun setCameraPosition(cameraPosition: LatLng) {
+  //   println("Camera position: ${cameraPosition.latitude}, ${cameraPosition.longitude}")
+  //   _mapUiState.update { currentState ->
+  //     currentState.copy(cameraPosition = cameraPosition) }
+  // }
+  //
+  // fun setZoomLevel(zoom: Float) {
+  //   println("Zoom: $zoom")
+  //   _mapUiState.update { currentState ->
+  //     currentState.copy(zoom = zoom) }
+  // }
 
   fun getParcels() {
     // val context = getApplication<Application>().applicationContext
@@ -120,7 +117,7 @@ class MapViewModel(app: Application) : AndroidViewModel(app) {
 
       parcels = DeliveryUseCase.getPackagesToDeliver(ParcelRepository())
 
-      if (parcels.size > 0) {
+      if (parcels.isNotEmpty()) {
         _parcelState.update { currentState ->
           currentState.copy(parcels = parcels)
         }
@@ -149,19 +146,31 @@ class MapViewModel(app: Application) : AndroidViewModel(app) {
   @RequiresApi(Build.VERSION_CODES.Q)
   fun getDeliveryRecommendation(context: Context, parcel: ParcelMapItem? = null) {
 
+    if (parcels.isEmpty()) {
+      viewModelScope.launch {
+        _eventChannel.send(UiEvent.ShowToast("Cannot recommends on empty parcels."))
+      }
+      return
+    }
+
+    this.job?.cancel()
+
     val preferenceRepository = PreferenceRepository(context)
     val repository = ParcelRepository()
 
-    viewModelScope.launch(Dispatchers.Default) {
+    this.job = viewModelScope.launch(Dispatchers.Default) {
+
       val selectedOptimizer = Optimizer.valueOf(preferenceRepository.getString(PreferencesKeys.OPTIMIZER).toString())
       val useHeuristicInit = preferenceRepository.getBoolean(PreferencesKeys.HEURISTIC_INIT)
       // val parcels = DeliveryUseCase.getPackagesToDeliver(repository)
       val optimizer: IOptimizer = when (selectedOptimizer) {
-        Optimizer.ACO -> AntColony(parcels = parcels, progress = {}, startAtParcel = parcel, useHeuristicInit = useHeuristicInit)
-        else -> BeeColony(parcels = parcels, progress = {}, startAtParcel = parcel)
-      } as IOptimizer
+        Optimizer.ACO -> AntColony(parcels = parcels, startAtParcel = parcel, useHeuristicInit = useHeuristicInit)
+        else -> BeeColony(parcels = parcels, startAtParcel = parcel)
+      }
 
-      DeliveryUseCase.getDeliverySequence(repository, optimizer).collect{
+      DeliveryUseCase.getDeliverySequence(repository, optimizer)
+        .cancellable()
+        .collect{
         progressStatus ->
           _deliveryUiState.update { currentState ->
             currentState.copy(isComputing = true) }
@@ -272,6 +281,15 @@ class MapViewModel(app: Application) : AndroidViewModel(app) {
       currentState.copy(
         showParcelSheet = shouldShow
       )
+    }
+  }
+
+  fun cancelGetDeliveryRecommendation() {
+    this.job?.cancel()
+    _deliveryUiState.update { currentState ->
+      currentState.copy(isComputing = false) }
+    _parcelState.update { currentState ->
+      currentState.copy(isComputing = false)
     }
   }
 

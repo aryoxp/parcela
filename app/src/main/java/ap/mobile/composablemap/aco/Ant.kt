@@ -9,18 +9,20 @@ class Ant(val parcels: List<ParcelMapItem>,
     pheromones: MutableMap<Int, MutableMap<Int, Double>>,
     startAtParcel: ParcelMapItem?
   ) : Path {
+    // Log.d("Ant", "Ant is moving...")
+    if (parcels.isEmpty()) throw Exception("Empty parcels.")
 
-    var parcelDelivered = mutableListOf<Int>()
+    val parcelDelivered = mutableListOf<Int>()
     val parcelsToDeliver = parcels.map { it.id }.toMutableList()
 
     startAtParcel?.let {
       parcelDelivered.add(it.id)
       parcelsToDeliver.remove(it.id)
-    } ?: {
-      val id = parcelsToDeliver[(Math.random() * parcels.size).toInt()]
-      parcelDelivered.add(id)
-      parcelsToDeliver.remove(id)
-    }()
+    } ?: run {
+      val id1 = parcelsToDeliver[(Math.random() * this@Ant.parcels.size).toInt()]
+      parcelDelivered.add(id1)
+      parcelsToDeliver.remove(id1)
+    }
 
     // Start delivering the parcels
     while(parcelsToDeliver.isNotEmpty()) {

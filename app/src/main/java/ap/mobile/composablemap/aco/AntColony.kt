@@ -3,6 +3,9 @@ package ap.mobile.composablemap.aco
 import ap.mobile.composablemap.model.ParcelMapItem
 import ap.mobile.composablemap.optimizer.Delivery
 import ap.mobile.composablemap.optimizer.IOptimizer
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.isActive
 
 class AntColony(
   val parcels: List<ParcelMapItem>,
@@ -10,8 +13,6 @@ class AntColony(
   val cycleLimit: Int = 100,
   val cycleConvergence: Int = 30,
   val rho: Float = .5f,
-  val progress: (progress: Float) -> Unit,
-  // val report: (cycle: Int, fitness: Double) -> Unit,
   val startAtParcel: ParcelMapItem? = null,
   val useHeuristicInit: Boolean? = false
 ) : IOptimizer {
@@ -55,21 +56,28 @@ class AntColony(
 
   override suspend fun compute(onProgress: suspend (Float) -> Unit): Delivery {
     var bestPath: Path? = null
-    var bestCycle = 0
+    var bestCycle: Int
     var convergence = 0
     for (cycle in 1..cycleLimit) {
+      if (!currentCoroutineContext().isActive) {
+        return Delivery(
+          parcels = bestPath?.getParcels() ?: emptyList(),
+          distance = bestPath?.sugar?.times(110.574)?.toFloat() ?: 0.0f,
+          duration = bestPath?.getDuration() ?: 0.0f
+        )
+      } // Fast fail manually
+      currentCoroutineContext().ensureActive()
       println("Cycle $cycle")
-
       // Evaporate pheromones
       if (cycle > 1) {
-        pheromones.values.map {
-          it.entries.map {
-            it.setValue(it.value * (1 - rho))
+        pheromones.values.forEach { a ->
+          a.entries.forEach { b ->
+            b.setValue(b.value * (1 - rho))
           }
         }
       }
 
-      var lastBestCycle = this.bestCycle
+      val lastBestCycle = this.bestCycle
 
       // Ants start scouting
       for (ant in ants) {
